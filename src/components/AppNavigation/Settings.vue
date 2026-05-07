@@ -43,6 +43,7 @@
 					</NcFormBox>
 					<SettingsImportSection
 						:is-disabled="loadingCalendars" />
+					<GoogleSyncSection />
 					<NcFormGroup :label="t('calendar', 'CalDAV')" :description="t('calendar', 'Access Nextcloud calendars from other apps and devices')">
 						<NcFormBox>
 							<NcFormBoxCopyButton :label="t('calendar', 'CalDAV URL')" :value="primaryCalDAV" />
@@ -157,6 +158,7 @@ import { mapState, mapStores } from 'pinia'
 import CogIcon from 'vue-material-design-icons/CogOutline.vue'
 import CalendarPicker from '../Shared/CalendarPicker.vue'
 import SettingsAttachmentsFolder from './Settings/SettingsAttachmentsFolder.vue'
+import GoogleSyncSection from './Settings/GoogleSyncSection.vue'
 import SettingsImportSection from './Settings/SettingsImportSection.vue'
 import SettingsTimezoneSelect from './Settings/SettingsTimezoneSelect.vue'
 import ShortcutOverview from './Settings/ShortcutOverview.vue'
@@ -182,6 +184,7 @@ export default {
 		NcSelect,
 		CalendarPicker,
 		SettingsImportSection,
+		GoogleSyncSection,
 		SettingsTimezoneSelect,
 		SettingsAttachmentsFolder,
 		ShortcutOverview,

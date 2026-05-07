@@ -86,6 +86,7 @@ src/fonts
 *.clover
 
 # just sane ignores
+.env
 .*.sw[po]
 *.bak
 *.BAK

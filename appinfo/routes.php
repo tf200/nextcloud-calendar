@@ -43,6 +43,10 @@ return [
 		['name' => 'contact#getContactGroupMembers', 'url' => '/v1/autocompletion/groupmembers', 'verb' => 'POST'],
 		// Settings
 		['name' => 'settings#setConfig', 'url' => '/v1/config/{key}', 'verb' => 'POST'],
+		['name' => 'google#status', 'url' => '/google/status', 'verb' => 'GET'],
+		['name' => 'google#connect', 'url' => '/google/connect', 'verb' => 'GET'],
+		['name' => 'google#callback', 'url' => '/google/callback', 'verb' => 'GET'],
+		['name' => 'google#disconnect', 'url' => '/google/disconnect', 'verb' => 'POST'],
 		// Tools
 		['name' => 'email#sendEmailPublicLink', 'url' => '/v1/public/sendmail', 'verb' => 'POST'],
 	],
