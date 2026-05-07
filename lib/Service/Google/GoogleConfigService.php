@@ -55,7 +55,9 @@ class GoogleConfigService {
 	}
 
 	public function getCalendarUrl(string $status): string {
-		return $this->urlGenerator->linkToRouteAbsolute('calendar.view.index', [
+		return $this->urlGenerator->linkToRouteAbsolute('calendar.view.index.view.timerange', [
+			'view' => 'dayGridMonth',
+			'timeRange' => 'now',
 			'googleSync' => $status,
 		]);
 	}
