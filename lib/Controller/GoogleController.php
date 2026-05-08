@@ -13,6 +13,7 @@ use OCA\Calendar\Http\JsonResponse;
 use OCA\Calendar\Service\Google\GoogleAuthService;
 use OCA\Calendar\Service\Google\GoogleConfigService;
 use OCA\Calendar\Service\Google\GoogleOAuthService;
+use OCA\Calendar\Service\Google\GoogleSyncService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\RedirectResponse;
@@ -32,6 +33,7 @@ class GoogleController extends Controller {
 		private GoogleConfigService $configService,
 		private GoogleOAuthService $oauthService,
 		private GoogleAuthService $authService,
+		private GoogleSyncService $syncService,
 		private ISession $session,
 		private ISecureRandom $random,
 		private LoggerInterface $logger,
@@ -105,6 +107,15 @@ class GoogleController extends Controller {
 			]);
 
 			return new RedirectResponse($this->configService->getCalendarUrl('error'));
+		}
+
+		try {
+			$this->syncService->syncInitial($this->userId);
+		} catch (Throwable $e) {
+			$this->logger->warning('Initial Google Calendar sync failed: ' . $e->getMessage(), [
+				'app' => $this->appName,
+				'exception' => $e,
+			]);
 		}
 
 		return new RedirectResponse($this->configService->getCalendarUrl('connected'));

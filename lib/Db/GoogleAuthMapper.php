@@ -48,4 +48,17 @@ class GoogleAuthMapper extends QBMapper {
 
 		return $qb->executeStatement();
 	}
+
+	/**
+	 * @return GoogleAuth[]
+	 * @throws DbException
+	 */
+	public function findAllConnected(): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->isNotNull('refresh_token'));
+
+		return $this->findEntities($qb);
+	}
 }

@@ -11,6 +11,7 @@ namespace OCA\Calendar\Service\Google;
 
 use OCA\Calendar\Db\GoogleAuth;
 use OCA\Calendar\Db\GoogleAuthMapper;
+use OCA\Calendar\Db\GoogleSyncMapMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\DB\Exception as DbException;
@@ -20,6 +21,7 @@ use function time;
 class GoogleAuthService {
 	public function __construct(
 		private GoogleAuthMapper $mapper,
+		private GoogleSyncMapMapper $syncMapMapper,
 		private GoogleConfigService $configService,
 		private ICrypto $crypto,
 	) {
@@ -84,6 +86,7 @@ class GoogleAuthService {
 	 * @throws DbException
 	 */
 	public function disconnect(string $userId): void {
+		$this->syncMapMapper->deleteByUserId($userId);
 		$this->mapper->deleteByUserId($userId);
 	}
 }

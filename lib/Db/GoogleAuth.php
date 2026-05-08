@@ -33,6 +33,10 @@ use ReturnTypeWillChange;
  * @method void setScope(?string $scope)
  * @method string|null getTokenType()
  * @method void setTokenType(?string $tokenType)
+ * @method string|null getGoogleCalendarId()
+ * @method void setGoogleCalendarId(?string $googleCalendarId)
+ * @method int|null getLastSyncAt()
+ * @method void setLastSyncAt(?int $lastSyncAt)
  * @method int getCreatedAt()
  * @method void setCreatedAt(int $createdAt)
  * @method int getUpdatedAt()
@@ -47,11 +51,14 @@ class GoogleAuth extends Entity implements JsonSerializable {
 	protected $accessTokenExpiresAt;
 	protected $scope;
 	protected $tokenType;
+	protected $googleCalendarId;
+	protected $lastSyncAt;
 	protected $createdAt;
 	protected $updatedAt;
 
 	public function __construct() {
 		$this->addType('accessTokenExpiresAt', Types::BIGINT);
+		$this->addType('lastSyncAt', Types::BIGINT);
 		$this->addType('createdAt', Types::BIGINT);
 		$this->addType('updatedAt', Types::BIGINT);
 	}
@@ -67,6 +74,8 @@ class GoogleAuth extends Entity implements JsonSerializable {
 			'accessTokenExpiresAt' => $this->getAccessTokenExpiresAt(),
 			'scope' => $this->getScope(),
 			'tokenType' => $this->getTokenType(),
+			'googleCalendarId' => $this->getGoogleCalendarId(),
+			'lastSyncAt' => $this->getLastSyncAt(),
 			'createdAt' => $this->getCreatedAt(),
 			'updatedAt' => $this->getUpdatedAt(),
 		];

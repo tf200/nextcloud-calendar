@@ -11,6 +11,7 @@ use OCA\Calendar\Dashboard\CalendarWidget;
 use OCA\Calendar\Events\BeforeAppointmentBookedEvent;
 use OCA\Calendar\Listener\AppointmentBookedListener;
 use OCA\Calendar\Listener\CalendarReferenceListener;
+use OCA\Calendar\Listener\GoogleSyncListener;
 use OCA\Calendar\Listener\NotifyPushListener;
 use OCA\Calendar\Listener\UserDeletedListener;
 use OCA\Calendar\Notification\Notifier;
@@ -61,6 +62,9 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(CalendarObjectCreatedEvent::class, NotifyPushListener::class);
 		$context->registerEventListener(CalendarObjectUpdatedEvent::class, NotifyPushListener::class);
 		$context->registerEventListener(CalendarObjectDeletedEvent::class, NotifyPushListener::class);
+		$context->registerEventListener(CalendarObjectCreatedEvent::class, GoogleSyncListener::class);
+		$context->registerEventListener(CalendarObjectUpdatedEvent::class, GoogleSyncListener::class);
+		$context->registerEventListener(CalendarObjectDeletedEvent::class, GoogleSyncListener::class);
 
 		$context->registerNotifierService(Notifier::class);
 
