@@ -87,11 +87,11 @@ class Version5050Date20250701000005 extends SimpleMigrationStep {
 			$table->addIndex(['google_email'], 'cal_google_auth_email');
 		}
 
-		if ($schema->hasTable('calendar_google_sync_map')) {
+		if ($schema->hasTable('calendar_google_map')) {
 			return $schema;
 		}
 
-		$table = $schema->createTable('calendar_google_sync_map');
+		$table = $schema->createTable('calendar_google_map');
 		$table->addColumn('id', Types::BIGINT, [
 			'autoincrement' => true,
 			'notnull' => true,
@@ -139,8 +139,8 @@ class Version5050Date20250701000005 extends SimpleMigrationStep {
 		]);
 
 		$table->setPrimaryKey(['id']);
-		$table->addUniqueIndex(['user_id', 'nextcloud_calendar_uri', 'nextcloud_object_uri'], 'cal_google_sync_obj');
-		$table->addIndex(['user_id'], 'cal_google_sync_user');
+		$table->addUniqueIndex(['user_id', 'nextcloud_calendar_uri', 'nextcloud_object_uri'], 'cal_gmap_obj');
+		$table->addIndex(['user_id'], 'cal_gmap_user');
 
 		return $schema;
 	}

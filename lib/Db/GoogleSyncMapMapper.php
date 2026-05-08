@@ -21,7 +21,7 @@ use OCP\IDBConnection;
  */
 class GoogleSyncMapMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
-		parent::__construct($db, 'calendar_google_sync_map', GoogleSyncMap::class);
+		parent::__construct($db, 'calendar_google_map', GoogleSyncMap::class);
 	}
 
 	/**
