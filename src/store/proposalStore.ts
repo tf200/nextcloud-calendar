@@ -8,6 +8,7 @@ import type { ProposalDateInterface, ProposalInterface, ProposalResponseInterfac
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { Proposal } from '@/models/proposals/proposals'
+import { projectService } from '@/services/projectService'
 import { proposalService } from '@/services/proposalService'
 import { createRoomFromProposal, generateRoomUrl } from '@/services/talkService'
 import useSettingsStore from '@/store/settings'
@@ -112,7 +113,17 @@ export default defineStore('proposal', () => {
 			talkRoomUri: null as string | null,
 		}
 
-		if (settingsStore.talkEnabled && proposal.location === 'Talk conversation') {
+		if (proposal.projectId !== null) {
+			const projects = await projectService.listMyProjects()
+			const project = projects.find((entry) => entry.id === proposal.projectId)
+			if (!project) {
+				throw new Error('Selected project is not available for the current user')
+			}
+			if (!project.talk_url) {
+				throw new Error('Selected project has no Talk conversation')
+			}
+			options.talkRoomUri = project.talk_url
+		} else if (settingsStore.talkEnabled && proposal.location === 'Talk conversation') {
 			const talkRoom = await createRoomFromProposal(proposal)
 			options.talkRoomUri = generateRoomUrl(talkRoom)
 		}

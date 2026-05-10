@@ -70,6 +70,31 @@
 					</div>
 					<!-- Row 2: Details -->
 					<div class="proposal-editor__row-details">
+						<NcSelect
+							class="proposal-editor__project-selector"
+							label="name"
+							:clearable="true"
+							:disabled="projectsLoading"
+							:input-label="t('calendar', 'Project')"
+							:options="projectOptions"
+							:value="selectedProject"
+							@input="onProjectSelect">
+							<template #option="project">
+								<div class="proposal-editor__project-option">
+									<strong>{{ project.name }}</strong>
+									<span v-if="project.number">{{ project.number }}</span>
+								</div>
+							</template>
+							<template #selected-option="project">
+								<div class="proposal-editor__project-option proposal-editor__project-option--selected">
+									<strong>{{ project.name }}</strong>
+									<span v-if="project.number">{{ project.number }}</span>
+								</div>
+							</template>
+						</NcSelect>
+						<p v-if="selectedProject" class="proposal-editor__project-helper">
+							{{ t('calendar', 'This proposal will use the selected project Talk conversation when converted to a meeting.') }}
+						</p>
 						<NcTextField
 							v-model="selectedProposal.title"
 							class="proposal-editor__proposal-title"
@@ -85,7 +110,7 @@
 								:label="t('calendar', 'Location')"
 								:value="selectedProposal.location" />
 							<NcCheckboxRadioSwitch
-								v-if="settingsStore.talkEnabled"
+								v-if="settingsStore.talkEnabled && !selectedProposal.projectId"
 								class="proposal-editor__proposal-location-selector"
 								variant="secondary"
 								:model-value="modalEditLocationState"
@@ -255,6 +280,7 @@
 
 <script lang="ts">
 import type { Proposal } from '@/models/proposals/proposals'
+import type { ProjectOption } from '@/services/projectService'
 
 import FullCalendarInteraction from '@fullcalendar/interaction'
 import FullCalendarTimeGrid from '@fullcalendar/timegrid'
@@ -277,6 +303,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcModal from '@nextcloud/vue/components/NcModal'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import InviteesListSearch from '@/components/Editor/Invitees/InviteesListSearch.vue'
@@ -287,6 +314,7 @@ import { getBusySlots } from '../../services/freeBusySlotService.js'
 import FullCalendarMoment from '@/fullcalendar/localization/momentPlugin.js'
 import FullCalendarTimezones from '@/fullcalendar/timezones/vtimezoneNamedTimezoneImpl.js'
 import { ProposalDate, ProposalParticipant } from '@/models/proposals/proposals'
+import { projectService } from '@/services/projectService'
 // types, object and stores
 import usePrincipalStore from '@/store/principals.js'
 import useProposalStore from '@/store/proposalStore'
@@ -318,6 +346,7 @@ export default {
 		NcCheckboxRadioSwitch,
 		NcDialog,
 		NcModal,
+		NcSelect,
 		NcTextField,
 		NcTextArea,
 		FullCalendar,
@@ -359,6 +388,8 @@ export default {
 			pendingDeleteProposal: null as Proposal | null,
 			showConvertDialog: false,
 			pendingConvertDate: null as ProposalDate | null,
+			projectOptions: [] as ProjectOption[],
+			projectsLoading: false,
 		}
 	},
 
@@ -420,6 +451,14 @@ export default {
 			} else {
 				return false
 			}
+		},
+
+		selectedProject(): ProjectOption | null {
+			if (!this.selectedProposal?.projectId) {
+				return null
+			}
+
+			return this.projectOptions.find((project) => project.id === this.selectedProposal?.projectId) ?? null
 		},
 
 		/**
@@ -613,6 +652,9 @@ export default {
 		onModalOpen() {
 			this.selectedProposal = this.proposalStore.modalProposal
 			this.modalMode = this.proposalStore.modalMode
+			if (this.modalMode === 'create' || this.modalMode === 'modify') {
+				this.loadProjectOptions()
+			}
 
 			// Wait for the FullCalendar component to be mounted before trying to initialize API
 			this.$nextTick(() => {
@@ -640,6 +682,27 @@ export default {
 
 		onProposalModify() {
 			this.modalMode = 'modify'
+			this.loadProjectOptions()
+		},
+
+		async loadProjectOptions(): Promise<void> {
+			this.projectsLoading = true
+			try {
+				this.projectOptions = await projectService.listMyProjects()
+			} catch (error) {
+				showError(t('calendar', 'Failed to load projects'))
+				console.error('Failed to load projects:', error)
+			} finally {
+				this.projectsLoading = false
+			}
+		},
+
+		onProjectSelect(project: ProjectOption | null): void {
+			if (!this.selectedProposal) {
+				return
+			}
+
+			this.selectedProposal.projectId = project?.id ?? null
 		},
 
 		onProposalDestroy(proposal: Proposal) {
@@ -1230,6 +1293,38 @@ export default {
 	overflow-y: auto;
 	margin-bottom: calc(var(--default-grid-baseline) * 2);
 	min-height: 0;
+}
+
+.proposal-editor__project-selector {
+	width: 100%;
+}
+
+.proposal-editor__project-option {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+
+	strong,
+	span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	span {
+		color: var(--color-text-maxcontrast);
+		font-size: calc(var(--default-grid-baseline) * 3);
+	}
+}
+
+.proposal-editor__project-option--selected {
+	line-height: 1.2;
+}
+
+.proposal-editor__project-helper {
+	margin: calc(var(--default-grid-baseline) * -1) 0 calc(var(--default-grid-baseline) * 1);
+	color: var(--color-text-maxcontrast);
+	font-size: calc(var(--default-grid-baseline) * 3);
 }
 
 .proposal-editor__row-actions {

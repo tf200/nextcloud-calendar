@@ -24,6 +24,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setLocation(?string $value)
  * @method int getDuration()
  * @method void setDuration(int $value)
+ * @method ?int getProjectId()
+ * @method void setProjectId(?int $value)
  */
 class ProposalDetailsEntry extends Entity {
 	protected ?string $uid = null;
@@ -32,4 +34,5 @@ class ProposalDetailsEntry extends Entity {
 	protected ?string $description = null;
 	protected ?string $location = null;
 	protected int $duration = 0;
+	protected ?int $projectId = null;
 }

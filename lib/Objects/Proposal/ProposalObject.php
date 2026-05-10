@@ -21,6 +21,7 @@ class ProposalObject {
 	private ?string $description = null;
 	private ?string $location = null;
 	private ?int $duration = null;
+	private ?int $projectId = null;
 	private ProposalParticipantCollection $participants;
 	private ProposalDateCollection $dates;
 	private ProposalVoteCollection $votes;
@@ -46,6 +47,9 @@ class ProposalObject {
 			'dates' => $this->dates->toJson(),
 			'votes' => $this->votes->toJson(),
 		];
+		if ($context === 'private') {
+			$data['projectId'] = $this->projectId;
+		}
 		return $data;
 	}
 
@@ -69,6 +73,9 @@ class ProposalObject {
 		}
 		if (isset($data['duration']) && !is_int($data['duration'])) {
 			throw new \InvalidArgumentException('Duration must be an integer');
+		}
+		if (isset($data['projectId']) && !is_int($data['projectId'])) {
+			throw new \InvalidArgumentException('Project ID must be an integer');
 		}
 		// assign values
 		foreach ($data as $key => $value) {
@@ -95,6 +102,7 @@ class ProposalObject {
 		$entry->setDescription($this->description);
 		$entry->setLocation($this->location);
 		$entry->setDuration($this->duration);
+		$entry->setProjectId($this->projectId);
 		return $entry;
 	}
 
@@ -106,6 +114,7 @@ class ProposalObject {
 		$this->description = $entry->getDescription();
 		$this->location = $entry->getLocation();
 		$this->duration = $entry->getDuration();
+		$this->projectId = $entry->getProjectId();
 	}
 
 	public function getId(): ?int {
@@ -170,6 +179,14 @@ class ProposalObject {
 
 	public function setDuration(?int $value): void {
 		$this->duration = $value;
+	}
+
+	public function getProjectId(): ?int {
+		return $this->projectId;
+	}
+
+	public function setProjectId(?int $value): void {
+		$this->projectId = $value;
 	}
 
 	public function getParticipants(): ProposalParticipantCollection {
