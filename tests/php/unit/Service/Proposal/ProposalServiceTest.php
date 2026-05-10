@@ -37,8 +37,12 @@ use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserManager;
+use OCP\Mail\IEMailTemplate;
+use OCP\Mail\IMessage;
 use OCP\Mail\IMailer;
 use OCP\Mail\Provider\IManager as IMailManager;
+use OCP\Notification\IManager as INotificationManager;
+use OCP\Notification\INotification;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 
@@ -56,6 +60,7 @@ class ProposalServiceTest extends TestCase {
 	protected IMailer|MockObject $systemMailManager;
 	protected IMailManager|MockObject $userMailManager;
 	protected IManager|MockObject $calendarManager;
+	protected INotificationManager|MockObject $notificationManager;
 	protected ProposalService $service;
 	protected IUser|MockObject $user;
 
@@ -74,6 +79,7 @@ class ProposalServiceTest extends TestCase {
 		$this->systemMailManager = $this->createMock(IMailer::class);
 		$this->userMailManager = $this->createMock(IMailManager::class);
 		$this->calendarManager = $this->createMock(Manager::class);
+		$this->notificationManager = $this->createMock(INotificationManager::class);
 		$this->user = $this->createMock(IUser::class);
 
 		$this->user->method('getUID')->willReturn('testuser');
@@ -92,7 +98,8 @@ class ProposalServiceTest extends TestCase {
 			$this->userManager,
 			$this->systemMailManager,
 			$this->userMailManager,
-			$this->calendarManager
+			$this->calendarManager,
+			$this->notificationManager
 		);
 	}
 
@@ -455,6 +462,106 @@ class ProposalServiceTest extends TestCase {
 	public function testStoreResponseSuccess(): void {
 		$response = $this->createProposalResponse('token123');
 		$participantEntry = $this->createParticipantEntry(1, 1, 'test@example.com', 'token123');
+		$participantEntry->setName('Responding User');
+		$participantEntry->setStatus(ProposalParticipantStatus::Pending->value);
+		$proposalEntry = $this->createProposalEntry(1, 'Test Proposal');
+		$pendingParticipantEntry = $this->createParticipantEntry(2, 1, 'pending@example.com', 'token456');
+		$pendingParticipantEntry->setStatus(ProposalParticipantStatus::Pending->value);
+
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('fetchByToken')
+			->with('token123')
+			->willReturn($participantEntry);
+
+		$this->proposalMapper->expects($this->once())
+			->method('fetchById')
+			->with('testuser', 1)
+			->willReturn($proposalEntry);
+
+		$this->proposalDateMapper->expects($this->once())
+			->method('fetchByProposalId')
+			->with('testuser', 1)
+			->willReturn([]);
+
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('fetchByProposalId')
+			->with('testuser', 1)
+			->willReturn([$participantEntry, $pendingParticipantEntry]);
+
+		$this->proposalVoteMapper->expects($this->once())
+			->method('deleteByParticipantId')
+			->with('testuser', 1);
+
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('update')
+			->with($participantEntry);
+
+		$this->userManager->expects($this->once())
+			->method('get')
+			->with('testuser')
+			->willReturn($this->user);
+
+		$this->expectOrganizerNotification('Test Proposal', 'Responding User');
+
+		$this->systemMailManager->expects($this->never())
+			->method('createEMailTemplate');
+
+		$this->service->storeResponse($response);
+	}
+
+	public function testStoreResponseSendsEmailWhenAllParticipantsResponded(): void {
+		$response = $this->createProposalResponse('token123');
+		$participantEntry = $this->createParticipantEntry(1, 1, 'test@example.com', 'token123');
+		$participantEntry->setName('Responding User');
+		$participantEntry->setStatus(ProposalParticipantStatus::Pending->value);
+		$proposalEntry = $this->createProposalEntry(1, 'Test Proposal');
+		$respondedParticipantEntry = $this->createParticipantEntry(2, 1, 'responded@example.com', 'token456');
+		$respondedParticipantEntry->setStatus(ProposalParticipantStatus::Responded->value);
+
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('fetchByToken')
+			->with('token123')
+			->willReturn($participantEntry);
+
+		$this->proposalMapper->expects($this->once())
+			->method('fetchById')
+			->with('testuser', 1)
+			->willReturn($proposalEntry);
+
+		$this->proposalDateMapper->expects($this->once())
+			->method('fetchByProposalId')
+			->with('testuser', 1)
+			->willReturn([]);
+
+		$this->proposalVoteMapper->expects($this->once())
+			->method('deleteByParticipantId')
+			->with('testuser', 1);
+
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('update')
+			->with($participantEntry);
+
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('fetchByProposalId')
+			->with('testuser', 1)
+			->willReturn([$participantEntry, $respondedParticipantEntry]);
+
+		$this->userManager->expects($this->once())
+			->method('get')
+			->with('testuser')
+			->willReturn($this->user);
+
+		$this->expectOrganizerNotification('Test Proposal', 'Responding User');
+		$this->expectAllResponsesEmail();
+
+		$this->service->storeResponse($response);
+	}
+
+	public function testStoreResponseDoesNotResendEmailForExistingResponse(): void {
+		$response = $this->createProposalResponse('token123');
+		$participantEntry = $this->createParticipantEntry(1, 1, 'test@example.com', 'token123');
+		$participantEntry->setName('Responding User');
+		$participantEntry->setStatus(ProposalParticipantStatus::Responded->value);
 		$proposalEntry = $this->createProposalEntry(1, 'Test Proposal');
 
 		$this->proposalParticipantMapper->expects($this->once())
@@ -479,6 +586,19 @@ class ProposalServiceTest extends TestCase {
 		$this->proposalParticipantMapper->expects($this->once())
 			->method('update')
 			->with($participantEntry);
+
+		$this->proposalParticipantMapper->expects($this->never())
+			->method('fetchByProposalId');
+
+		$this->userManager->expects($this->once())
+			->method('get')
+			->with('testuser')
+			->willReturn($this->user);
+
+		$this->expectOrganizerNotification('Test Proposal', 'Responding User');
+
+		$this->systemMailManager->expects($this->never())
+			->method('createEMailTemplate');
 
 		$this->service->storeResponse($response);
 	}
@@ -693,6 +813,76 @@ class ProposalServiceTest extends TestCase {
 		// test mapping with no vote
 		$votes = new ProposalVoteCollection();
 		$this->assertSame('NEEDS-ACTION', $this->service->convertProposalAttendeeAttendance($dateObj, $participantObj, $votes));
+	}
+
+	private function expectOrganizerNotification(string $proposalTitle, string $participantName): void {
+		$notification = $this->createMock(INotification::class);
+		$notification->expects($this->once())
+			->method('setApp')
+			->with('calendar')
+			->willReturnSelf();
+		$notification->expects($this->once())
+			->method('setUser')
+			->with('testuser')
+			->willReturnSelf();
+		$notification->expects($this->once())
+			->method('setObject')
+			->with('proposal', '1')
+			->willReturnSelf();
+		$notification->expects($this->once())
+			->method('setSubject')
+			->with('proposal_participant_responded', $this->callback(static function (array $parameters) use ($proposalTitle, $participantName): bool {
+				return $parameters['proposal_id'] === 1
+					&& $parameters['proposal_title'] === $proposalTitle
+					&& $parameters['participant_name'] === $participantName
+					&& $parameters['participant_address'] === 'test@example.com';
+			}))
+			->willReturnSelf();
+		$notification->expects($this->once())
+			->method('setDateTime')
+			->with($this->isInstanceOf(\DateTime::class))
+			->willReturnSelf();
+
+		$this->notificationManager->expects($this->once())
+			->method('createNotification')
+			->willReturn($notification);
+		$this->notificationManager->expects($this->once())
+			->method('notify')
+			->with($notification);
+	}
+
+	private function expectAllResponsesEmail(): void {
+		$template = $this->createMock(IEMailTemplate::class);
+		$template->expects($this->once())->method('addHeader');
+		$template->expects($this->once())->method('setSubject');
+		$template->expects($this->once())->method('addHeading');
+		$template->expects($this->once())->method('addBodyText');
+		$template->expects($this->once())->method('addBodyButton');
+		$template->expects($this->once())->method('addFooter');
+
+		$message = $this->createMock(IMessage::class);
+		$message->expects($this->once())->method('setFrom')->willReturnSelf();
+		$message->expects($this->once())->method('setTo')->with(['test@example.com' => 'Test User'])->willReturnSelf();
+		$message->expects($this->once())->method('useTemplate')->with($template)->willReturnSelf();
+
+		$this->l10n->method('t')->willReturnCallback(static function (string $text): string {
+			return $text;
+		});
+		$this->urlGenerator->expects($this->once())
+			->method('linkToRouteAbsolute')
+			->with('calendar.view.index')
+			->willReturn('https://cloud.example.test/apps/calendar');
+		$this->systemMailManager->expects($this->once())
+			->method('createEMailTemplate')
+			->with('calendar.proposal.responses-complete')
+			->willReturn($template);
+		$this->systemMailManager->expects($this->once())
+			->method('createMessage')
+			->willReturn($message);
+		$this->systemMailManager->expects($this->once())
+			->method('send')
+			->with($message)
+			->willReturn([]);
 	}
 
 	private function createProposalEntry(int $id, string $title): ProposalDetailsEntry {

@@ -12,7 +12,9 @@ namespace OCA\Calendar\Service\Proposal;
 use DateTimeZone;
 use Exception;
 use OCA\Calendar\Db\ProposalDateMapper;
+use OCA\Calendar\Db\ProposalDetailsEntry;
 use OCA\Calendar\Db\ProposalMapper;
+use OCA\Calendar\Db\ProposalParticipantEntry;
 use OCA\Calendar\Db\ProposalParticipantMapper;
 use OCA\Calendar\Db\ProposalVoteMapper;
 use OCA\Calendar\Objects\Proposal\ProposalCollection;
@@ -40,6 +42,7 @@ use OCP\Mail\IMailer;
 use OCP\Mail\Provider\Address;
 use OCP\Mail\Provider\IManager as IMailManager;
 use OCP\Mail\Provider\IMessageSend;
+use OCP\Notification\IManager as INotificationManager;
 use Psr\Log\LoggerInterface;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
@@ -60,6 +63,7 @@ class ProposalService {
 		private IMailer $systemMailManager,
 		private IMailManager $userMailManager,
 		private IManager $calendarManager,
+		private INotificationManager $notificationManager,
 	) {
 	}
 
@@ -416,6 +420,7 @@ class ProposalService {
 		}
 		// retrieve proposal dates
 		$proposalDateEntries = $this->proposalDateMapper->fetchByProposalId($participantEntry->getUid(), $participantEntry->getPid());
+		$wasAlreadyResponded = $participantEntry->getStatus() === ProposalParticipantStatus::Responded->value;
 
 		// first, delete any existing votes for this participant
 		$this->proposalVoteMapper->deleteByParticipantId($participantEntry->getUid(), $participantEntry->getId());
@@ -446,6 +451,83 @@ class ProposalService {
 		// update participant status to responded
 		$participantEntry->setStatus(ProposalParticipantStatus::Responded->value);
 		$this->proposalParticipantMapper->update($participantEntry);
+
+		$organizer = $this->userManager->get($participantEntry->getUid());
+		if ($organizer === null) {
+			return;
+		}
+
+		$this->notifyOrganizerParticipantResponded($organizer, $proposalEntry, $participantEntry);
+
+		if (!$wasAlreadyResponded && $this->allParticipantsResponded($participantEntry->getUid(), $participantEntry->getPid())) {
+			$this->sendOrganizerAllResponsesEmail($organizer, $proposalEntry);
+		}
+	}
+
+	private function notifyOrganizerParticipantResponded(IUser $user, ProposalDetailsEntry $proposal, ProposalParticipantEntry $participant): void {
+		$notification = $this->notificationManager->createNotification();
+		$notification
+			->setApp('calendar')
+			->setUser($user->getUID())
+			->setObject('proposal', (string)$proposal->getId())
+			->setSubject('proposal_participant_responded', [
+				'proposal_id' => $proposal->getId(),
+				'proposal_title' => $proposal->getTitle() ?? $this->l10n->t('Untitled meeting proposal'),
+				'participant_name' => $participant->getName() ?: $participant->getAddress(),
+				'participant_address' => $participant->getAddress(),
+			])
+			->setDateTime(new \DateTime());
+
+		$this->notificationManager->notify($notification);
+	}
+
+	private function allParticipantsResponded(string $userId, int $proposalId): bool {
+		$participantEntries = $this->proposalParticipantMapper->fetchByProposalId($userId, $proposalId);
+		if (count($participantEntries) === 0) {
+			return false;
+		}
+
+		foreach ($participantEntries as $participantEntry) {
+			if ($participantEntry->getStatus() !== ProposalParticipantStatus::Responded->value) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private function sendOrganizerAllResponsesEmail(IUser $user, ProposalDetailsEntry $proposal): void {
+		$recipientAddress = $user->getEMailAddress();
+		if (empty($recipientAddress)) {
+			return;
+		}
+
+		$recipientName = $user->getDisplayName();
+		$proposalTitle = $proposal->getTitle() ?? $this->l10n->t('Untitled meeting proposal');
+
+		$template = $this->systemMailManager->createEMailTemplate('calendar.proposal.responses-complete');
+		$template->addHeader();
+		$template->setSubject($this->l10n->t('All participants responded to %s', [$proposalTitle]));
+		$template->addHeading($this->l10n->t('All participants have responded'));
+		$template->addBodyText($this->l10n->t('All participants have submitted their availability for "%s".', [$proposalTitle]));
+		$template->addBodyButton(
+			$this->l10n->t('View proposal'),
+			$this->urlGenerator->linkToRouteAbsolute('calendar.view.index')
+		);
+		$template->addFooter();
+
+		try {
+			$fromAddress = \OCP\Util::getDefaultEmailAddress('proposal-noreply');
+			$message = $this->systemMailManager->createMessage();
+			$message->setFrom([$fromAddress => '']);
+			$message->setTo(
+				$recipientName !== null ? [$recipientAddress => $recipientName] : [$recipientAddress]
+			);
+			$message->useTemplate($template);
+			$this->systemMailManager->send($message);
+		} catch (Exception $e) {
+			$this->logger->error($e->getMessage(), ['app' => 'calendar', 'exception' => $e]);
+		}
 	}
 
 	private function generateNotifications(IUser $user, ProposalObject $proposal, string $reason): void {

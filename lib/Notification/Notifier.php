@@ -51,6 +51,22 @@ class Notifier implements INotifier {
 
 		switch ($notification->getSubject()) {
 			// Deal with known subjects
+			case 'proposal_participant_responded':
+				$parameters = $notification->getSubjectParameters();
+				$notification->setRichSubject($l->t('{participant} responded to meeting proposal {proposal}'), [
+					'participant' => [
+						'type' => 'highlight',
+						'id' => $parameters['participant_address'],
+						'name' => $parameters['participant_name'],
+					],
+					'proposal' => [
+						'id' => $parameters['proposal_id'],
+						'type' => 'highlight',
+						'name' => $parameters['proposal_title'],
+						'link' => $this->url->linkToRouteAbsolute('calendar.view.index'),
+					],
+				]);
+				break;
 			case 'booking_accepted':
 				$parameters = $notification->getSubjectParameters();
 				$notification->setRichSubject($l->t('New booking {booking}'), [
