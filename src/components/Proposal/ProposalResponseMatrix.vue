@@ -10,7 +10,10 @@
 				<thead>
 					<tr class="proposal-matrix__header">
 						<th v-if="mode === 'organizer'" scope="col" class="proposal-matrix__table-header-organizer">
-							&nbsp;
+							{{ t('calendar', 'Time') }}
+						</th>
+						<th v-if="mode === 'organizer'" scope="col" class="proposal-matrix__table-count-header">
+							{{ t('calendar', 'Accepted') }}
 						</th>
 						<th
 							v-if="mode === 'participant'"
@@ -46,13 +49,26 @@
 						<tr
 							:key="'day-' + group.key"
 							class="proposal-matrix__table-row-label">
-							<td class="proposal-matrix__table-day-label">
+							<td :colspan="columnCount" class="proposal-matrix__table-day-label">
 								{{ group.label }}
 							</td>
 						</tr>
 						<tr v-for="date in group.dates" :key="date.id" class="proposal-matrix__table-row">
 							<td class="proposal-matrix__table-day-time">
 								{{ dateTimeSpan(date.date) }}
+							</td>
+							<td v-if="mode === 'organizer'" class="proposal-matrix__table-count">
+								<div class="proposal-matrix__accepted-count">
+									<strong>{{ acceptedVotesForDate(date.id) }}</strong>
+									<span>{{ t('calendar', 'of {count}', { count: participantCount }) }}</span>
+								</div>
+								<div
+									class="proposal-matrix__accepted-bar"
+									:aria-label="acceptedCountLabel(date.id)">
+									<div
+										class="proposal-matrix__accepted-bar-fill"
+										:style="{ width: acceptedVotePercent(date.id) + '%' }" />
+								</div>
 							</td>
 							<td v-if="mode === 'participant'" class="proposal-matrix__table-actions-participant">
 								<div class="voting-options-container">
@@ -168,6 +184,7 @@ export default {
 
 		response: {
 			type: ProposalResponse,
+			default: undefined,
 		},
 
 		timezoneId: {
@@ -217,9 +234,16 @@ export default {
 		},
 
 		columnCount() {
-			// time + participants + action
+			// time + participant vote controls + participants + action/count columns
 			const participants = this.proposal?.participants?.length ?? 0
+			if (this.mode === 'organizer') {
+				return 3 + participants
+			}
 			return 2 + participants
+		},
+
+		participantCount() {
+			return this.proposal?.participants?.length ?? 0
 		},
 
 	},
@@ -321,6 +345,29 @@ export default {
 
 			return vote ? vote.vote : null // null indicates no response
 		},
+
+		acceptedVotesForDate(dateId) {
+			if (!this.proposal || !dateId) {
+				return 0
+			}
+
+			return this.proposal.votes.filter((vote) => vote.date === dateId && vote.vote === ProposalDateVote.Yes).length
+		},
+
+		acceptedVotePercent(dateId) {
+			if (this.participantCount === 0) {
+				return 0
+			}
+
+			return Math.round((this.acceptedVotesForDate(dateId) / this.participantCount) * 100)
+		},
+
+		acceptedCountLabel(dateId) {
+			return t('calendar', '{accepted} of {total} participants accepted', {
+				accepted: this.acceptedVotesForDate(dateId),
+				total: this.participantCount,
+			})
+		},
 	},
 }
 </script>
@@ -329,17 +376,20 @@ export default {
 
 .proposal-matrix__details {
 	max-height: 50vh;
-	overflow-y: auto;
+	overflow: auto;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
 }
 
 .proposal-matrix__table {
 	border-collapse: separate;
 	border-spacing: 0;
+	min-width: max-content;
 
 	thead {
 		position: sticky;
 		top: 0;
-		z-index: 100;
+		z-index: 10;
 		background-color: var(--color-main-background);
 	}
 
@@ -347,9 +397,39 @@ export default {
 		padding-bottom: calc(var(--default-grid-baseline) * 2);
 	}
 
-	tbody {
-		border: 1px solid var(--color-border);
+	th,
+	td {
+		background-color: var(--color-main-background);
 	}
+}
+
+.proposal-matrix__table-header-organizer,
+.proposal-matrix__table-day-time {
+	position: sticky;
+	inset-inline-start: 0;
+	z-index: 4;
+	min-width: calc(var(--default-grid-baseline) * 30);
+	max-width: calc(var(--default-grid-baseline) * 30);
+	padding-inline: calc(var(--default-grid-baseline) * 3);
+	box-shadow: 1px 0 0 var(--color-border);
+}
+
+.proposal-matrix__table-count-header,
+.proposal-matrix__table-count {
+	position: sticky;
+	inset-inline-start: calc(var(--default-grid-baseline) * 30);
+	z-index: 4;
+	min-width: calc(var(--default-grid-baseline) * 28);
+	max-width: calc(var(--default-grid-baseline) * 28);
+	padding-inline: calc(var(--default-grid-baseline) * 3);
+	box-shadow: 1px 0 0 var(--color-border);
+}
+
+.proposal-matrix__table-header-organizer,
+.proposal-matrix__table-count-header {
+	z-index: 12;
+	text-align: start;
+	font-weight: 600;
 }
 
 .proposal-matrix__table-header-participant {
@@ -361,8 +441,9 @@ export default {
 
 .proposal-matrix__table-participant-header {
 	text-align: center;
-	padding-inline: calc(var(--default-grid-baseline) * 2);
-	width: calc(var(--default-grid-baseline) * 24);
+	padding-inline: calc(var(--default-grid-baseline) * 1);
+	min-width: calc(var(--default-grid-baseline) * 18);
+	max-width: calc(var(--default-grid-baseline) * 18);
 }
 
 .proposal-matrix__table-participant-header-avatar {
@@ -374,10 +455,11 @@ export default {
 
 .proposal-matrix__table-participant-header-name {
 	font-weight: 600;
+	font-size: calc(var(--default-grid-baseline) * 3);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	max-width: calc(var(--default-grid-baseline) * 22);
+	max-width: calc(var(--default-grid-baseline) * 16);
 }
 
 .proposal-matrix__table-row-label {
@@ -392,6 +474,46 @@ export default {
 	font-weight: 600;
 	font-size: calc(var(--default-grid-baseline) * 4);
 	color: var(--color-text-primary);
+	padding: calc(var(--default-grid-baseline) * 3);
+	background-color: var(--color-background-hover) !important;
+}
+
+.proposal-matrix__table-row:not(.proposal-matrix__table-row-label):hover td {
+	background-color: var(--color-background-hover);
+}
+
+.proposal-matrix__table-count {
+	vertical-align: middle;
+}
+
+.proposal-matrix__accepted-count {
+	display: flex;
+	align-items: baseline;
+	gap: calc(var(--default-grid-baseline) * 1);
+	white-space: nowrap;
+
+	strong {
+		font-size: calc(var(--default-grid-baseline) * 5);
+	}
+
+	span {
+		color: var(--color-text-maxcontrast);
+		font-size: calc(var(--default-grid-baseline) * 3);
+	}
+}
+
+.proposal-matrix__accepted-bar {
+	height: calc(var(--default-grid-baseline) * 1);
+	margin-top: calc(var(--default-grid-baseline) * 1);
+	overflow: hidden;
+	background-color: var(--color-background-dark);
+	border-radius: var(--border-radius-pill);
+}
+
+.proposal-matrix__accepted-bar-fill {
+	height: 100%;
+	background-color: var(--color-success);
+	border-radius: inherit;
 }
 
 .proposal-matrix__empty {
@@ -406,8 +528,12 @@ export default {
 }
 
 .proposal-matrix__table-action-header {
+	position: sticky;
+	inset-inline-end: 0;
+	z-index: 12;
 	width: auto;
 	white-space: nowrap;
+	box-shadow: -1px 0 0 var(--color-border);
 }
 
 .voting-options-container {
@@ -457,6 +583,8 @@ export default {
 	text-align: center;
 	padding-inline: calc(var(--default-grid-baseline) * 1);
 	padding-block: calc(var(--default-grid-baseline) * 2);
+	min-width: calc(var(--default-grid-baseline) * 18);
+	max-width: calc(var(--default-grid-baseline) * 18);
 
 	:deep(.material-design-icon.check-icon) {
 		color: #32CD32;
@@ -499,6 +627,33 @@ export default {
 
 	:deep(.material-design-icon.help-icon svg) {
 		height: 18px;
+	}
+}
+
+.proposal-matrix__table-actions-organizer {
+	position: sticky;
+	inset-inline-end: 0;
+	z-index: 4;
+	padding-inline: calc(var(--default-grid-baseline) * 2);
+	box-shadow: -1px 0 0 var(--color-border);
+}
+
+@media only screen and (max-width: 600px) {
+	.proposal-matrix__details {
+		max-height: 60vh;
+	}
+
+	.proposal-matrix__table-header-organizer,
+	.proposal-matrix__table-day-time {
+		min-width: calc(var(--default-grid-baseline) * 24);
+		max-width: calc(var(--default-grid-baseline) * 24);
+	}
+
+	.proposal-matrix__table-count-header,
+	.proposal-matrix__table-count {
+		inset-inline-start: calc(var(--default-grid-baseline) * 24);
+		min-width: calc(var(--default-grid-baseline) * 24);
+		max-width: calc(var(--default-grid-baseline) * 24);
 	}
 }
 

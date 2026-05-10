@@ -8,6 +8,7 @@
 		<NcModal
 			v-if="modalVisible"
 			class="proposal-modal__content"
+			:class="`proposal-modal__content--${modalMode}`"
 			:title="modalTitle"
 			:size="modalSize"
 			@close="onModalClose()">
@@ -371,11 +372,7 @@ export default {
 		},
 
 		modalSize(): string {
-			if (this.modalMode === 'view') {
-				return 'normal'
-			} else {
-				return 'full'
-			}
+			return 'full'
 		},
 
 		modalTitle(): string {
@@ -1093,15 +1090,24 @@ export default {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
+}
 
-	:deep(.modal-wrapper--normal .modal-container) {
-		width: unset !important;
+.proposal-modal__content--view {
+	:deep(.modal-container) {
+		max-width: min(1400px, calc(100vw - calc(var(--default-grid-baseline) * 8)));
+	}
+
+	:deep(.modal-container__content) {
+		min-height: 0;
 	}
 }
 
 .proposal-viewer__content {
-	padding-top: calc(var(--default-grid-baseline) * 8);
-	padding-bottom: calc(var(--default-grid-baseline) * 8);
+	box-sizing: border-box;
+	height: 100%;
+	min-height: 0;
+	padding-top: calc(var(--default-grid-baseline) * 4);
+	padding-bottom: calc(var(--default-grid-baseline) * 4);
 	padding-inline: calc(var(--default-grid-baseline) * 8);
 	display: flex;
 	flex-direction: column;
@@ -1111,9 +1117,15 @@ export default {
 .proposal-viewer__content-title {
 	font-size: calc(var(--default-grid-baseline) * 6);
 	font-weight: bold;
+	line-height: 1.2;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
 	hyphens: auto;
+}
+
+.proposal-viewer__content-description {
+	color: var(--color-text-maxcontrast);
+	line-height: 1.4;
 }
 
 .proposal-viewer__content-details {
@@ -1127,6 +1139,8 @@ export default {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	gap: calc(var(--default-grid-baseline) * 3);
+	flex-wrap: wrap;
 }
 
 .proposal-viewer__content-location,
@@ -1150,10 +1164,30 @@ export default {
 }
 
 .proposal-viewer__content-matrix {
+	min-height: 0;
 	padding-top: calc(var(--default-grid-baseline) * 4);
 	padding-bottom: calc(var(--default-grid-baseline) * 2);
 	border-top: 2px solid var(--color-border);
-	border-bottom: 2px solid var(--color-border);
+	flex: 1;
+}
+
+@media only screen and (max-width: 600px) {
+	.proposal-modal__content {
+		&.proposal-modal__content--view {
+			:deep(.modal-container) {
+				max-width: 100vw;
+			}
+		}
+	}
+
+	.proposal-viewer__content {
+		padding-inline: calc(var(--default-grid-baseline) * 3);
+	}
+
+	.proposal-viewer__content-actions {
+		width: 100%;
+		justify-content: flex-end;
+	}
 }
 
 .proposal-editor__content {
