@@ -701,6 +701,107 @@ class ProposalServiceTest extends TestCase {
 		$this->addToAssertionCount(1); // If we reached this point, the test is successfully completed
 	}
 
+	public function testConvertProposalSendsMeetingLinkEmailWhenTalkRoomUriProvided(): void {
+		$proposalEntry = $this->createProposalEntry(1, 'Convert Proposal');
+		$proposalEntry->setDuration(60);
+		$proposalEntry->setUuid('uuid-123');
+
+		$dateEntry = new ProposalDateEntry();
+		$dateEntry->setId(10);
+		$dateEntry->setPid(1);
+		$dateEntry->setUid('testuser');
+		$dateEntry->setDate((new \DateTimeImmutable('+1 day'))->getTimestamp());
+
+		$participantEntry = new ProposalParticipantEntry();
+		$participantEntry->setId(20);
+		$participantEntry->setPid(1);
+		$participantEntry->setUid('testuser');
+		$participantEntry->setName('Alice');
+		$participantEntry->setAddress('alice@example.com');
+		$participantEntry->setAttendance('R');
+		$participantEntry->setStatus('P');
+		$participantEntry->setRealm('I');
+		$participantEntry->setToken('tok20');
+
+		$this->user->method('getEMailAddress')->willReturn('organizer@example.com');
+		$this->user->method('getDisplayName')->willReturn('Organizer');
+
+		$this->proposalMapper->expects($this->once())
+			->method('fetchById')
+			->with('testuser', 1)
+			->willReturn($proposalEntry);
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('fetchByProposalId')
+			->with('testuser', 1)
+			->willReturn([$participantEntry]);
+		$this->proposalDateMapper->expects($this->once())
+			->method('fetchByProposalId')
+			->with('testuser', 1)
+			->willReturn([$dateEntry]);
+		$this->proposalVoteMapper->expects($this->once())
+			->method('fetchByProposalId')
+			->with('testuser', 1)
+			->willReturn([]);
+
+		$calendar = $this->createMock(\OCP\Calendar\ICreateFromString::class);
+		$calendar->method('isDeleted')->willReturn(false);
+		$calendar->expects($this->once())
+			->method('createFromString')
+			->with($this->callback(fn ($name) => str_ends_with($name, '.ics')),
+				$this->callback(fn ($data) => str_contains($data, 'LOCATION:https://cloud.example.test/call/project')));
+		$this->calendarManager->method('getPrimaryCalendar')->with('testuser')->willReturn($calendar);
+
+		$template = $this->createMock(IEMailTemplate::class);
+		$template->expects($this->once())->method('addHeader');
+		$template->expects($this->once())->method('setSubject');
+		$template->expects($this->once())->method('addHeading');
+		$template->expects($this->once())->method('addBodyText');
+		$template->expects($this->once())->method('addBodyListItem');
+		$template->expects($this->once())
+			->method('addBodyButton')
+			->with($this->anything(), 'https://cloud.example.test/call/project');
+		$template->expects($this->once())->method('addFooter');
+
+		$message = $this->createMock(IMessage::class);
+		$message->expects($this->once())->method('setFrom')->willReturnSelf();
+		$message->expects($this->once())->method('setTo')->with(['alice@example.com' => 'Alice'])->willReturnSelf();
+		$message->expects($this->once())->method('setReplyTo')->with(['organizer@example.com' => 'Organizer'])->willReturnSelf();
+		$message->expects($this->once())->method('useTemplate')->with($template)->willReturnSelf();
+
+		$this->l10n->method('t')->willReturnCallback(static function (string $text): string {
+			return $text;
+		});
+		$this->l10n->method('l')->willReturnCallback(static function (string $type, \DateTime $date): string {
+			return $type . ':' . $date->format('c');
+		});
+		$this->systemMailManager->expects($this->once())
+			->method('createEMailTemplate')
+			->with('calendar.proposal.meeting-link')
+			->willReturn($template);
+		$this->systemMailManager->expects($this->once())
+			->method('createMessage')
+			->willReturn($message);
+		$this->systemMailManager->expects($this->once())
+			->method('send')
+			->with($message)
+			->willReturn([]);
+
+		$this->proposalVoteMapper->expects($this->once())
+			->method('deleteByProposalId')
+			->with('testuser', 1);
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('deleteByProposalId')
+			->with('testuser', 1);
+		$this->proposalDateMapper->expects($this->once())
+			->method('deleteByProposalId')
+			->with('testuser', 1);
+		$this->proposalMapper->expects($this->once())
+			->method('deleteById')
+			->with('testuser', 1);
+
+		$this->service->convertProposal($this->user, 1, 10, ['talkRoomUri' => 'https://cloud.example.test/call/project']);
+	}
+
 	public function testConvertProposalDateNotFound(): void {
 		// mock objects
 		// proposal entry

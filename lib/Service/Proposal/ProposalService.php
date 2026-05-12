@@ -378,6 +378,10 @@ class ProposalService {
 			);
 		}
 
+		if ($talkRoomUri !== null) {
+			$this->sendMeetingLinkEmailNotifications($user, $proposal, $selectedDate, $talkRoomUri);
+		}
+
 		// destroy the proposal entry
 		$this->proposalVoteMapper->deleteByProposalId($user->getUID(), $proposal->getId());
 		$this->proposalParticipantMapper->deleteByProposalId($user->getUID(), $proposal->getId());
@@ -527,6 +531,56 @@ class ProposalService {
 			$this->systemMailManager->send($message);
 		} catch (Exception $e) {
 			$this->logger->error($e->getMessage(), ['app' => 'calendar', 'exception' => $e]);
+		}
+	}
+
+	private function sendMeetingLinkEmailNotifications(IUser $user, ProposalObject $proposal, ProposalDateObject $selectedDate, string $meetingLink): void {
+		$senderAddress = $user->getEMailAddress();
+		if (empty($senderAddress)) {
+			return;
+		}
+
+		$proposalTitle = $proposal->getTitle() ?? $this->l10n->t('Untitled meeting proposal');
+		$senderName = $user->getDisplayName();
+		$dtStart = \DateTime::createFromImmutable($selectedDate->getDate());
+		$dtEnd = (clone $dtStart)->add(new \DateInterval("PT{$proposal->getDuration()}M"));
+		$dateText = $this->l10n->t('%1$s from %2$s to %3$s', [
+			$this->l10n->l('date', $dtStart, ['width' => 'long']),
+			$this->l10n->l('time', $dtStart, ['width' => 'short']),
+			$this->l10n->l('time', $dtEnd, ['width' => 'short']),
+		]);
+
+		foreach ($proposal->getParticipants() as $participant) {
+			$recipientAddress = $participant->getAddress();
+			if (empty($recipientAddress)) {
+				continue;
+			}
+
+			$recipientName = $participant->getName();
+			$template = $this->systemMailManager->createEMailTemplate('calendar.proposal.meeting-link');
+			$template->addHeader();
+			$template->setSubject($this->l10n->t('%s has created a meeting', [$senderName]));
+			$template->addHeading($this->l10n->t('Meeting created: %s', [$proposalTitle]));
+			$template->addBodyText($this->l10n->t('The meeting proposal has been confirmed.'));
+			$template->addBodyListItem($dateText, $this->l10n->t('Date:'));
+			$template->addBodyButton($this->l10n->t('Join meeting'), $meetingLink);
+			$template->addFooter();
+
+			try {
+				$fromAddress = \OCP\Util::getDefaultEmailAddress('proposal-noreply');
+				$message = $this->systemMailManager->createMessage();
+				$message->setFrom([$fromAddress => $senderName ?? '']);
+				$message->setTo(
+					$recipientName !== null ? [$recipientAddress => $recipientName] : [$recipientAddress]
+				);
+				$message->setReplyTo(
+					$senderName !== null ? [$senderAddress => $senderName] : [$senderAddress]
+				);
+				$message->useTemplate($template);
+				$this->systemMailManager->send($message);
+			} catch (Exception $e) {
+				$this->logger->error($e->getMessage(), ['app' => 'calendar', 'exception' => $e]);
+			}
 		}
 	}
 
