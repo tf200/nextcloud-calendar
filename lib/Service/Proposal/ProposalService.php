@@ -28,6 +28,7 @@ use OCA\Calendar\Objects\Proposal\ProposalParticipantRealm;
 use OCA\Calendar\Objects\Proposal\ProposalParticipantStatus;
 use OCA\Calendar\Objects\Proposal\ProposalResponseObject;
 use OCA\Calendar\Objects\Proposal\ProposalVoteCollection;
+use OCA\Calendar\Service\Google\GoogleSyncService;
 use OCA\DAV\CalDAV\InvitationResponse\InvitationResponseServer;
 use OCP\Calendar\ICalendar;
 use OCP\Calendar\ICalendarIsWritable;
@@ -47,6 +48,7 @@ use Psr\Log\LoggerInterface;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Symfony\Component\Uid\Uuid;
+use Throwable;
 
 class ProposalService {
 
@@ -64,6 +66,7 @@ class ProposalService {
 		private IMailManager $userMailManager,
 		private IManager $calendarManager,
 		private INotificationManager $notificationManager,
+		private GoogleSyncService $googleSyncService,
 	) {
 	}
 
@@ -372,10 +375,14 @@ class ProposalService {
 		if ($result !== null) {
 			$this->applyCalendarBlockersOrganizer($user, $result['calendarUri'], $result['eventUri'], $vObject);
 		} else {
+			$eventUri = Uuid::v4()->toRfc4122() . '.ics';
 			$userCalendar->createFromString(
-				Uuid::v4()->toRfc4122() . '.ics',
+				$eventUri,
 				$vObject->serialize()
 			);
+			if ($userCalendar instanceof ICalendar) {
+				$this->syncGoogleCalendarObject($user, $userCalendar->getUri(), $eventUri, $vObject->serialize());
+			}
 		}
 
 		if ($talkRoomUri !== null) {
@@ -821,14 +828,17 @@ class ProposalService {
 		$calendar = $calendarHome->getChild($calendarUri);
 
 		if ($eventUri === null) {
+			$eventUri = Uuid::v4()->toRfc4122() . '.ics';
 			$calendar->createFile(
-				Uuid::v4()->toRfc4122() . '.ics',
+				$eventUri,
 				$vObject->serialize()
 			);
 		} else {
 			$event = $calendar->getChild($eventUri);
 			$event->put($vObject->serialize());
 		}
+
+		$this->syncGoogleCalendarObject($user, $calendarUri, $eventUri, $vObject->serialize());
 	}
 
 	/**
@@ -841,7 +851,39 @@ class ProposalService {
 		$calendar = $calendarHome->getChild($calendarUri);
 
 		$event = $calendar->getChild($eventUri);
+		$this->deleteGoogleCalendarObject($user, $calendarUri, $eventUri);
 		$event->delete($event->getName());
+	}
+
+	private function syncGoogleCalendarObject(IUser $user, string $calendarUri, string $eventUri, string $calendarData): void {
+		try {
+			$this->googleSyncService->syncCalendarObject($user->getUID(), $this->buildCalendarData($user, $calendarUri), [
+				'uri' => $eventUri,
+				'calendardata' => $calendarData,
+			]);
+		} catch (Throwable $e) {
+			$this->logger->warning('Google Calendar proposal sync failed: ' . $e->getMessage(), ['app' => 'calendar', 'exception' => $e]);
+		}
+	}
+
+	private function deleteGoogleCalendarObject(IUser $user, string $calendarUri, string $eventUri): void {
+		try {
+			$this->googleSyncService->deleteCalendarObject($user->getUID(), $this->buildCalendarData($user, $calendarUri), [
+				'uri' => $eventUri,
+			]);
+		} catch (Throwable $e) {
+			$this->logger->warning('Google Calendar proposal delete sync failed: ' . $e->getMessage(), ['app' => 'calendar', 'exception' => $e]);
+		}
+	}
+
+	/**
+	 * @return array{uri: string, principaluri: string}
+	 */
+	private function buildCalendarData(IUser $user, string $calendarUri): array {
+		return [
+			'uri' => $calendarUri,
+			'principaluri' => 'principals/users/' . $user->getUID(),
+		];
 	}
 
 	/**

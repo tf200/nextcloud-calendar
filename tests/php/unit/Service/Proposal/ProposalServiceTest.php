@@ -31,6 +31,7 @@ use OCA\Calendar\Objects\Proposal\ProposalResponseDateCollection;
 use OCA\Calendar\Objects\Proposal\ProposalResponseObject;
 use OCA\Calendar\Objects\Proposal\ProposalVoteCollection;
 use OCA\Calendar\Objects\Proposal\ProposalVoteObject;
+use OCA\Calendar\Service\Google\GoogleSyncService;
 use OCP\Calendar\IManager;
 use OCP\IAppConfig;
 use OCP\IL10N;
@@ -61,6 +62,7 @@ class ProposalServiceTest extends TestCase {
 	protected IMailManager|MockObject $userMailManager;
 	protected IManager|MockObject $calendarManager;
 	protected INotificationManager|MockObject $notificationManager;
+	protected GoogleSyncService|MockObject $googleSyncService;
 	protected ProposalService $service;
 	protected IUser|MockObject $user;
 
@@ -80,6 +82,7 @@ class ProposalServiceTest extends TestCase {
 		$this->userMailManager = $this->createMock(IMailManager::class);
 		$this->calendarManager = $this->createMock(Manager::class);
 		$this->notificationManager = $this->createMock(INotificationManager::class);
+		$this->googleSyncService = $this->createMock(GoogleSyncService::class);
 		$this->user = $this->createMock(IUser::class);
 
 		$this->user->method('getUID')->willReturn('testuser');
@@ -99,7 +102,8 @@ class ProposalServiceTest extends TestCase {
 			$this->systemMailManager,
 			$this->userMailManager,
 			$this->calendarManager,
-			$this->notificationManager
+			$this->notificationManager,
+			$this->googleSyncService
 		);
 	}
 
