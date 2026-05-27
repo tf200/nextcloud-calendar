@@ -106,13 +106,23 @@
 					:name="t('calendar', 'Editing')">
 					<NcSelect
 						:options="defaultReminderOptions"
-						:value="selectedDefaultReminderOption"
-						:disabled="savingDefaultReminder"
+						:value="selectedDefaultReminderNoTalkOption"
+						:disabled="savingDefaultReminderNoTalk"
 						:clearable="false"
-						:input-label="$t('calendar', 'Default reminder')"
+						:input-label="$t('calendar', 'Default reminder for events without Talk call')"
 						input-id="value"
 						label="label"
-						@option:selected="changeDefaultReminder" />
+						@option:selected="changeDefaultReminderNoTalk" />
+					<NcSelect
+						class="default-reminder-talk"
+						:options="defaultReminderOptions"
+						:value="selectedDefaultReminderTalkOption"
+						:disabled="savingDefaultReminderTalk"
+						:clearable="false"
+						:input-label="$t('calendar', 'Default reminder for events with Talk call')"
+						input-id="value"
+						label="label"
+						@option:selected="changeDefaultReminderTalk" />
 					<NcFormBox>
 						<NcFormBoxSwitch
 							v-model="simpleEventEditorBinding"
@@ -211,7 +221,8 @@ export default {
 			savingTasks: false,
 			savingPopover: false,
 			savingSlotDuration: false,
-			savingDefaultReminder: false,
+			savingDefaultReminderNoTalk: false,
+			savingDefaultReminderTalk: false,
 			savingDefaultCalendarId: false,
 			savingWeekend: false,
 			savingWeekNumber: false,
@@ -234,7 +245,8 @@ export default {
 			'showWeekends',
 			'showWeekNumbers',
 			'slotDuration',
-			'defaultReminder',
+			'defaultReminderNoTalk',
+			'defaultReminderTalk',
 		]),
 
 		...mapState(useSettingsStore, {
@@ -314,8 +326,12 @@ export default {
 			}].concat(defaultAlarms)
 		},
 
-		selectedDefaultReminderOption() {
-			return this.defaultReminderOptions.find((o) => o.value === this.defaultReminder)
+		selectedDefaultReminderNoTalkOption() {
+			return this.defaultReminderOptions.find((o) => o.value === this.defaultReminderNoTalk)
+		},
+
+		selectedDefaultReminderTalkOption() {
+			return this.defaultReminderOptions.find((o) => o.value === this.defaultReminderTalk)
 		},
 
 		availabilitySettingsUrl() {
@@ -483,27 +499,50 @@ export default {
 		},
 
 		/**
-		 * Updates the setting for the default reminder
+		 * Updates the setting for the default reminder without Talk
 		 *
 		 * @param {object} option The new selected value
 		 */
-		async changeDefaultReminder(option) {
+		async changeDefaultReminderNoTalk(option) {
 			if (!option) {
 				return
 			}
 
-			// change to loading status
-			this.savingDefaultReminder = true
+			this.savingDefaultReminderNoTalk = true
 
 			try {
-				await this.settingsStore.setDefaultReminder({
-					defaultReminder: option.value,
+				await this.settingsStore.setDefaultReminderNoTalk({
+					defaultReminderNoTalk: option.value,
 				})
-				this.savingDefaultReminder = false
+				this.savingDefaultReminderNoTalk = false
 			} catch (error) {
 				console.error(error)
 				showError(this.$t('calendar', 'New setting was not saved successfully.'))
-				this.savingDefaultReminder = false
+				this.savingDefaultReminderNoTalk = false
+			}
+		},
+
+		/**
+		 * Updates the setting for the default reminder with Talk
+		 *
+		 * @param {object} option The new selected value
+		 */
+		async changeDefaultReminderTalk(option) {
+			if (!option) {
+				return
+			}
+
+			this.savingDefaultReminderTalk = true
+
+			try {
+				await this.settingsStore.setDefaultReminderTalk({
+					defaultReminderTalk: option.value,
+				})
+				this.savingDefaultReminderTalk = false
+			} catch (error) {
+				console.error(error)
+				showError(this.$t('calendar', 'New setting was not saved successfully.'))
+				this.savingDefaultReminderTalk = false
 			}
 		},
 
@@ -544,5 +583,9 @@ export default {
 .navigation-calendar-settings {
 	padding-inline-start: calc(var(--default-grid-baseline) * 2);
 	padding-bottom: calc(var(--default-grid-baseline) * 2);
+}
+
+.default-reminder-talk {
+	margin-top: 8px;
 }
 </style>

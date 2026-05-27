@@ -47,7 +47,8 @@ class CalendarInitialStateService {
 		$defaultSkipPopover = $this->config->getAppValue($this->appName, 'skipPopover', 'no');
 		$defaultTimezone = $this->config->getAppValue($this->appName, 'timezone', 'automatic');
 		$defaultSlotDuration = $this->config->getAppValue($this->appName, 'slotDuration', '00:30:00');
-		$defaultDefaultReminder = $this->config->getAppValue($this->appName, 'defaultReminder', 'none');
+		$defaultDefaultReminderNoTalk = $this->config->getAppValue($this->appName, 'defaultReminderNoTalk', '-3600');
+		$defaultDefaultReminderTalk = $this->config->getAppValue($this->appName, 'defaultReminderTalk', '-900');
 		$defaultShowTasks = $this->config->getAppValue($this->appName, 'showTasks', 'yes');
 		$defaultTasksSidebar = $this->config->getAppValue($this->appName, 'tasksSidebar', 'yes');
 
@@ -61,7 +62,8 @@ class CalendarInitialStateService {
 		$timezone = $this->config->getUserValue($this->userId, $this->appName, 'timezone', $defaultTimezone);
 		$attachmentsFolder = $this->config->getUserValue($this->userId, 'dav', 'attachmentsFolder', '/Calendar');
 		$slotDuration = $this->config->getUserValue($this->userId, $this->appName, 'slotDuration', $defaultSlotDuration);
-		$defaultReminder = $this->config->getUserValue($this->userId, $this->appName, 'defaultReminder', $defaultDefaultReminder);
+		$defaultReminderNoTalk = $this->config->getUserValue($this->userId, $this->appName, 'defaultReminderNoTalk', $defaultDefaultReminderNoTalk);
+		$defaultReminderTalk = $this->config->getUserValue($this->userId, $this->appName, 'defaultReminderTalk', $defaultDefaultReminderTalk);
 		$showTasks = $this->config->getUserValue($this->userId, $this->appName, 'showTasks', $defaultShowTasks) === 'yes';
 		$tasksSidebar = $this->config->getUserValue($this->userId, $this->appName, 'tasksSidebar', $defaultTasksSidebar) === 'yes';
 		$hideEventExport = $this->config->getAppValue($this->appName, 'hideEventExport', 'no') === 'yes';
@@ -103,7 +105,8 @@ class CalendarInitialStateService {
 		$this->initialStateService->provideInitialState('timezone', $timezone);
 		$this->initialStateService->provideInitialState('attachments_folder', $attachmentsFolder);
 		$this->initialStateService->provideInitialState('slot_duration', $slotDuration);
-		$this->initialStateService->provideInitialState('default_reminder', $defaultReminder);
+		$this->initialStateService->provideInitialState('default_reminder_no_talk', $defaultReminderNoTalk);
+		$this->initialStateService->provideInitialState('default_reminder_talk', $defaultReminderTalk);
 		$this->initialStateService->provideInitialState('show_tasks', $showTasks);
 		$this->initialStateService->provideInitialState('tasks_sidebar', $tasksSidebar);
 		$this->initialStateService->provideInitialState('tasks_enabled', $tasksEnabled);

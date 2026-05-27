@@ -32,7 +32,7 @@ import { getBySetPositionAndBySetFromDate, getWeekDayFromDate } from '../utils/r
 import useCalendarObjectsStore from './calendarObjects.js'
 import useCalendarsStore from './calendars.js'
 import useSettingsStore from './settings.js'
-import { updateRoomParticipantsFromEvent } from '@/services/talkService'
+import { containsRoomUrl, updateRoomParticipantsFromEvent } from '@/services/talkService'
 
 export default defineStore('calendarObjectInstance', {
 	state: () => {
@@ -1168,6 +1168,51 @@ export default defineStore('calendarObjectInstance', {
 		},
 
 		/**
+		 * Applies the settings-level default reminder for the given event.
+		 * Uses defaultReminderTalk if the event has a Talk room URL,
+		 * otherwise uses defaultReminderNoTalk.
+		 * Removes all existing alarms first, then adds the default if it's not "none".
+		 *
+		 * @param {object} data The destructuring object
+		 * @param {object} data.calendarObjectInstance The calendarObjectInstance to update
+		 */
+		applySettingsDefaultReminder({ calendarObjectInstance }) {
+			const settingsStore = useSettingsStore()
+			const hasTalk = containsRoomUrl(calendarObjectInstance.location)
+				|| containsRoomUrl(calendarObjectInstance.description)
+			const defaultStr = hasTalk
+				? settingsStore.defaultReminderTalk
+				: settingsStore.defaultReminderNoTalk
+			const defaultSeconds = parseInt(defaultStr)
+
+			// Check if the current state already matches the desired default
+			const alarms = calendarObjectInstance.alarms
+			const isCorrect = alarms.length === 1
+				&& alarms[0].isRelative
+				&& alarms[0].type === 'DISPLAY'
+				&& alarms[0].relativeTrigger === defaultSeconds
+
+			if (isCorrect) {
+				return
+			}
+
+			// Remove all existing alarms (both from eventComponent and the reactive array)
+			for (const alarm of [...alarms]) {
+				this.removeAlarmFromCalendarObjectInstance({ calendarObjectInstance, alarm })
+			}
+
+			// Add the default alarm if it's a valid number
+			if (!isNaN(defaultSeconds)) {
+				this.addAlarmToCalendarObjectInstance({
+					calendarObjectInstance,
+					type: 'DISPLAY',
+					totalSeconds: defaultSeconds,
+				})
+				logger.debug(`Applied defaultReminder (${defaultSeconds}s) to event (${hasTalk ? 'with Talk' : 'without Talk'})`)
+			}
+		},
+
+		/**
 		 * @deprecated
 		 * @param calendarObjectInstance.calendarObjectInstance
 		 * @param calendarObjectInstance
@@ -1366,7 +1411,6 @@ export default defineStore('calendarObjectInstance', {
 			timezoneId,
 		}) {
 			const calendarObjectsStore = useCalendarObjectsStore()
-			const settingsStore = useSettingsStore()
 
 			if (this.isNew === true) {
 				return Promise.resolve({
@@ -1385,17 +1429,8 @@ export default defineStore('calendarObjectInstance', {
 			const eventComponent = getObjectAtRecurrenceId(calendarObject, startDate)
 			const calendarObjectInstance = mapEventComponentToEventObject(eventComponent)
 
-			// Add an alarm if the user set a default one in the settings. If
-			// not, defaultReminder will not be a number (rather the string "none").
-			const defaultReminder = parseInt(settingsStore.defaultReminder)
-			if (!isNaN(defaultReminder)) {
-				this.addAlarmToCalendarObjectInstance({
-					calendarObjectInstance,
-					type: 'DISPLAY',
-					totalSeconds: defaultReminder,
-				})
-				logger.debug(`Added defaultReminder (${defaultReminder}s) to newly created event`)
-			}
+			// Apply the settings-level default reminder
+			this.applySettingsDefaultReminder({ calendarObjectInstance })
 
 			// Add default status
 			const rfcProps = getRFCProperties()
@@ -1470,6 +1505,9 @@ export default defineStore('calendarObjectInstance', {
 
 			const eventComponent = this.calendarObjectInstance.eventComponent
 			const calendarObject = this.calendarObject
+
+			// Apply the settings-level default reminder based on talk presence
+			this.applySettingsDefaultReminder({ calendarObjectInstance: this.calendarObjectInstance })
 
 			updateAlarms(eventComponent)
 

@@ -159,7 +159,7 @@ class CalendarInitialStateServiceTest extends TestCase {
 			->willReturn([$this->createMock(IResourceBackend::class)]);
 		$this->roomManager->expects(self::never())
 			->method('getBackends');
-		$this->initialStateService->expects(self::exactly(27))
+		$this->initialStateService->expects(self::exactly(28))
 			->method('provideInitialState')
 			->willReturnMap([
 				['app_version', '1.0.0'],
@@ -174,7 +174,8 @@ class CalendarInitialStateServiceTest extends TestCase {
 				['timezone', 'Europe/Berlin'],
 				['attachments_folder', '/Calendar'],
 				['slot_duration', '00:15:00'],
-				['default_reminder', '00:10:00'],
+				['default_reminder_no_talk', '-3600'],
+				['default_reminder_talk', '-900'],
 				['show_tasks', false],
 				['tasks_sidebar', true],
 				['tasks_enabled', true],
@@ -271,7 +272,7 @@ class CalendarInitialStateServiceTest extends TestCase {
 		$this->roomManager->expects(self::once())
 			->method('getBackends')
 			->willReturn([]);
-		$this->initialStateService->expects(self::exactly(26))
+		$this->initialStateService->expects(self::exactly(27))
 			->method('provideInitialState')
 			->willReturnMap([
 				['app_version', '1.0.0'],
@@ -286,7 +287,8 @@ class CalendarInitialStateServiceTest extends TestCase {
 				['timezone', 'Europe/Berlin'],
 				['attachments_folder', '/Calendar'],
 				['slot_duration', '00:15:00'],
-				['default_reminder', '00:10:00'],
+				['default_reminder_no_talk', '-3600'],
+				['default_reminder_talk', '-900'],
 				['show_tasks', false],
 				['tasks_sidebar', false],
 				['tasks_enabled', true],
@@ -392,7 +394,7 @@ class CalendarInitialStateServiceTest extends TestCase {
 		$this->roomManager->expects(self::once())
 			->method('getBackends')
 			->willReturn([$this->createMock(IRoomBackend::class)]);
-		$this->initialStateService->expects(self::exactly(27))
+		$this->initialStateService->expects(self::exactly(28))
 			->method('provideInitialState')
 			->willReturnMap([
 				['app_version', '1.0.0'],
@@ -407,7 +409,8 @@ class CalendarInitialStateServiceTest extends TestCase {
 				['timezone', 'Europe/Berlin'],
 				['attachments_folder', '/Calendar'],
 				['slot_duration', '00:15:00'],
-				['default_reminder', '00:10:00'],
+				['default_reminder_no_talk', '-3600'],
+				['default_reminder_talk', '-900'],
 				['show_tasks', false],
 				['tasks_sidebar', false],
 				['tasks_enabled', false],

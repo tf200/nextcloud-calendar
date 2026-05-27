@@ -100,7 +100,8 @@ class PublicViewController extends Controller {
 		$defaultSkipPopover = $this->config->getAppValue($this->appName, 'skipPopover', 'yes');
 		$defaultTimezone = $this->config->getAppValue($this->appName, 'timezone', 'automatic');
 		$defaultSlotDuration = $this->config->getAppValue($this->appName, 'slotDuration', '00:30:00');
-		$defaultDefaultReminder = $this->config->getAppValue($this->appName, 'defaultReminder', 'none');
+		$defaultDefaultReminderNoTalk = $this->config->getAppValue($this->appName, 'defaultReminderNoTalk', '-3600');
+		$defaultDefaultReminderTalk = $this->config->getAppValue($this->appName, 'defaultReminderTalk', '-900');
 		$defaultShowTasks = $this->config->getAppValue($this->appName, 'showTasks', 'yes');
 		$defaultTasksSidebar = $this->config->getAppValue($this->appName, 'tasksSidebar', 'yes');
 		$defaultCanSubscribeLink = $this->config->getAppValue('dav', 'allow_calendar_link_subscriptions', 'yes');
@@ -118,7 +119,8 @@ class PublicViewController extends Controller {
 		$this->initialStateService->provideInitialState($this->appName, 'talk_api_version', 'v1');
 		$this->initialStateService->provideInitialState($this->appName, 'timezone', $defaultTimezone);
 		$this->initialStateService->provideInitialState($this->appName, 'slot_duration', $defaultSlotDuration);
-		$this->initialStateService->provideInitialState($this->appName, 'default_reminder', $defaultDefaultReminder);
+		$this->initialStateService->provideInitialState($this->appName, 'default_reminder_no_talk', $defaultDefaultReminderNoTalk);
+		$this->initialStateService->provideInitialState($this->appName, 'default_reminder_talk', $defaultDefaultReminderTalk);
 		$this->initialStateService->provideInitialState($this->appName, 'show_tasks', $defaultShowTasks === 'yes');
 		$this->initialStateService->provideInitialState($this->appName, 'tasks_sidebar', $defaultTasksSidebar === 'yes');
 		$this->initialStateService->provideInitialState($this->appName, 'tasks_enabled', false);

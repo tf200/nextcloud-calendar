@@ -33,7 +33,8 @@ export default defineStore('settings', {
 			showWeekNumbers: null,
 			skipPopover: null,
 			slotDuration: null,
-			defaultReminder: null,
+			defaultReminderNoTalk: null,
+			defaultReminderTalk: null,
 			tasksEnabled: false,
 			timezone: 'automatic',
 			hideEventExport: false,
@@ -207,18 +208,33 @@ export default defineStore('settings', {
 		},
 
 		/**
-		 * Updates the user's preferred defaultReminder
+		 * Updates the user's preferred defaultReminderNoTalk
 		 *
 		 * @param {object} data The destructuring object
-		 * @param {string} data.defaultReminder The new default reminder
+		 * @param {string} data.defaultReminderNoTalk The new default reminder for events without Talk
 		 */
-		async setDefaultReminder({ defaultReminder }) {
-			if (this.defaultReminder === defaultReminder) {
+		async setDefaultReminderNoTalk({ defaultReminderNoTalk }) {
+			if (this.defaultReminderNoTalk === defaultReminderNoTalk) {
 				return
 			}
 
-			await setConfig('defaultReminder', defaultReminder)
-			this.defaultReminder = defaultReminder
+			await setConfig('defaultReminderNoTalk', defaultReminderNoTalk)
+			this.defaultReminderNoTalk = defaultReminderNoTalk
+		},
+
+		/**
+		 * Updates the user's preferred defaultReminderTalk
+		 *
+		 * @param {object} data The destructuring object
+		 * @param {string} data.defaultReminderTalk The new default reminder for events with Talk
+		 */
+		async setDefaultReminderTalk({ defaultReminderTalk }) {
+			if (this.defaultReminderTalk === defaultReminderTalk) {
+				return
+			}
+
+			await setConfig('defaultReminderTalk', defaultReminderTalk)
+			this.defaultReminderTalk = defaultReminderTalk
 		},
 
 		/**
@@ -299,7 +315,8 @@ export default defineStore('settings', {
 		 * @param {boolean} data.showWeekends Whether or not to display weekends
 		 * @param {boolean} data.skipPopover Whether or not to skip the simple event popover
 		 * @param {string} data.slotDuration The duration of one slot in the agendaView
-		 * @param {string} data.defaultReminder The default reminder to set on newly created events
+		 * @param {string} data.defaultReminderNoTalk The default reminder for events without Talk
+		 * @param {string} data.defaultReminderTalk The default reminder for events with Talk
 		 * @param {boolean} data.talkEnabled Whether or not the talk app is enabled
 		 * @param {boolean} data.tasksEnabled Whether ot not the tasks app is enabled
 		 * @param {string} data.timezone The timezone to view the calendar in. Either an Olsen timezone or "automatic"
@@ -312,7 +329,7 @@ export default defineStore('settings', {
 		 * @param {boolean} data.showResources Show or hide the resources tab
 		 * @param {string} data.publicCalendars
 		 */
-		loadSettingsFromServer({ appVersion, eventLimit, firstRun, showWeekNumbers, showTasks, showWeekends, skipPopover, slotDuration, defaultReminder, talkEnabled, tasksEnabled, timezone, hideEventExport, forceEventAlarmType, disableAppointments, tasksSidebar, canSubscribeLink, attachmentsFolder, showResources, publicCalendars }) {
+		loadSettingsFromServer({ appVersion, eventLimit, firstRun, showWeekNumbers, showTasks, showWeekends, skipPopover, slotDuration, defaultReminderNoTalk, defaultReminderTalk, talkEnabled, tasksEnabled, timezone, hideEventExport, forceEventAlarmType, disableAppointments, tasksSidebar, canSubscribeLink, attachmentsFolder, showResources, publicCalendars }) {
 			logInfo(`
 Initial settings:
 	- AppVersion: ${appVersion}
@@ -323,7 +340,8 @@ Initial settings:
 	- ShowWeekends: ${showWeekends}
 	- SkipPopover: ${skipPopover}
 	- SlotDuration: ${slotDuration}
-	- DefaultReminder: ${defaultReminder}
+	- DefaultReminderNoTalk: ${defaultReminderNoTalk}
+	- DefaultReminderTalk: ${defaultReminderTalk}
 	- TalkEnabled: ${talkEnabled}
 	- TasksEnabled: ${tasksEnabled}
 	- TasksSidebar: ${tasksSidebar}
@@ -345,7 +363,8 @@ Initial settings:
 			this.showWeekends = showWeekends
 			this.skipPopover = skipPopover
 			this.slotDuration = slotDuration
-			this.defaultReminder = defaultReminder
+			this.defaultReminderNoTalk = defaultReminderNoTalk
+			this.defaultReminderTalk = defaultReminderTalk
 			this.talkEnabled = talkEnabled
 			this.tasksEnabled = tasksEnabled
 			this.timezone = timezone

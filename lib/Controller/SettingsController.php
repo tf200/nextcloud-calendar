@@ -70,8 +70,10 @@ class SettingsController extends Controller {
 				return $this->setEventLimit($value);
 			case 'slotDuration':
 				return $this->setSlotDuration($value);
-			case 'defaultReminder':
-				return $this->setDefaultReminder($value);
+		case 'defaultReminderNoTalk':
+			return $this->setDefaultReminderNoTalk($value);
+		case 'defaultReminderTalk':
+			return $this->setDefaultReminderTalk($value);
 			case 'showTasks':
 				return $this->setShowTasks($value);
 			case 'tasksSidebar':
@@ -347,12 +349,12 @@ class SettingsController extends Controller {
 	}
 
 	/**
-	 * sets defaultReminder for user
+	 * sets defaultReminderNoTalk for user
 	 *
-	 * @param string $value User-selected option for default_reminder in agenda view
+	 * @param string $value User-selected option for default_reminder_no_talk
 	 * @return JSONResponse
 	 */
-	private function setDefaultReminder(string $value):JSONResponse {
+	private function setDefaultReminderNoTalk(string $value):JSONResponse {
 		if ($value !== 'none'
 			&& filter_var($value, FILTER_VALIDATE_INT,
 				['options' => ['max_range' => 0]]) === false) {
@@ -363,7 +365,34 @@ class SettingsController extends Controller {
 			$this->config->setUserValue(
 				$this->userId,
 				$this->appName,
-				'defaultReminder',
+				'defaultReminderNoTalk',
+				$value
+			);
+		} catch (\Exception $e) {
+			return new JSONResponse([], Http::STATUS_INTERNAL_SERVER_ERROR);
+		}
+
+		return new JSONResponse();
+	}
+
+	/**
+	 * sets defaultReminderTalk for user
+	 *
+	 * @param string $value User-selected option for default_reminder_talk
+	 * @return JSONResponse
+	 */
+	private function setDefaultReminderTalk(string $value):JSONResponse {
+		if ($value !== 'none'
+			&& filter_var($value, FILTER_VALIDATE_INT,
+				['options' => ['max_range' => 0]]) === false) {
+			return new JSONResponse([], Http::STATUS_UNPROCESSABLE_ENTITY);
+		}
+
+		try {
+			$this->config->setUserValue(
+				$this->userId,
+				$this->appName,
+				'defaultReminderTalk',
 				$value
 			);
 		} catch (\Exception $e) {

@@ -183,10 +183,6 @@
 							:linkify-links="true"
 							@update:value="updateDescription" />
 
-						<AlarmList
-							:calendar-object-instance="calendarObjectInstance"
-							:is-read-only="isReadOnly" />
-
 						<AttachmentsList
 							v-if="!isLoading"
 							:calendar-object-instance="calendarObjectInstance"
@@ -356,7 +352,6 @@ import Delete from 'vue-material-design-icons/TrashCanOutline.vue'
 import Download from 'vue-material-design-icons/TrayArrowDown.vue'
 import IconVideo from 'vue-material-design-icons/VideoOutline.vue'
 import AddTalkModal from '../components/Editor/AddTalkModal.vue'
-import AlarmList from '../components/Editor/Alarm/AlarmList.vue'
 import AttachmentsList from '../components/Editor/Attachments/AttachmentsList.vue'
 import CalendarPickerHeader from '../components/Editor/CalendarPickerHeader.vue'
 import InvitationResponseButtons from '../components/Editor/InvitationResponseButtons.vue'
@@ -387,7 +382,6 @@ export default {
 		PropertyColor,
 		PropertySelectMultiple,
 		SaveButtons,
-		AlarmList,
 		NcActionButton,
 		NcActionLink,
 		NcEmptyContent,
