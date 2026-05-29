@@ -39,7 +39,7 @@ class MicrosoftCalendarApiService {
 	}
 
 	public function insertEvent(string $accessToken, string $calendarId, array $event): string {
-		$data = $this->request('POST', '/calendars/' . rawurlencode($calendarId) . '/events', $accessToken, $event);
+		$data = $this->request('POST', '/me/calendars/' . rawurlencode($calendarId) . '/events', $accessToken, $event);
 		if (empty($data['id']) || !is_string($data['id'])) {
 			throw new RuntimeException('Microsoft did not return an event id.');
 		}
@@ -48,11 +48,11 @@ class MicrosoftCalendarApiService {
 	}
 
 	public function updateEvent(string $accessToken, string $calendarId, string $eventId, array $event): void {
-		$this->request('PATCH', '/calendars/' . rawurlencode($calendarId) . '/events/' . rawurlencode($eventId), $accessToken, $event);
+		$this->request('PATCH', '/me/calendars/' . rawurlencode($calendarId) . '/events/' . rawurlencode($eventId), $accessToken, $event);
 	}
 
 	public function deleteEvent(string $accessToken, string $calendarId, string $eventId): void {
-		$this->request('DELETE', '/calendars/' . rawurlencode($calendarId) . '/events/' . rawurlencode($eventId), $accessToken);
+		$this->request('DELETE', '/me/calendars/' . rawurlencode($calendarId) . '/events/' . rawurlencode($eventId), $accessToken);
 	}
 
 	/**
@@ -66,7 +66,7 @@ class MicrosoftCalendarApiService {
 
 	private function calendarExists(string $accessToken, string $calendarId): bool {
 		try {
-			$this->request('GET', '/calendars/' . rawurlencode($calendarId), $accessToken);
+			$this->request('GET', '/me/calendars/' . rawurlencode($calendarId), $accessToken);
 			return true;
 		} catch (RuntimeException) {
 			return false;
