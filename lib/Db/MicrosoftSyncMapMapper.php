@@ -21,7 +21,7 @@ use OCP\IDBConnection;
  */
 class MicrosoftSyncMapMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
-		parent::__construct($db, 'calendar_microsoft_map', MicrosoftSyncMap::class);
+		parent::__construct($db, 'cal_ms_map', MicrosoftSyncMap::class);
 	}
 
 	/**

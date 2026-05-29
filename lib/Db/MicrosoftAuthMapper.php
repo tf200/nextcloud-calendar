@@ -21,7 +21,7 @@ use OCP\IDBConnection;
  */
 class MicrosoftAuthMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
-		parent::__construct($db, 'calendar_microsoft_auth', MicrosoftAuth::class);
+		parent::__construct($db, 'cal_ms_auth', MicrosoftAuth::class);
 	}
 
 	/**

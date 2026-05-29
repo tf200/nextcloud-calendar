@@ -20,8 +20,8 @@ class Version5050Date20250701000008 extends SimpleMigrationStep {
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		$schema = $schemaClosure();
 
-		if ($schema->hasTable('calendar_microsoft_auth')) {
-			$table = $schema->getTable('calendar_microsoft_auth');
+		if ($schema->hasTable('cal_ms_auth')) {
+			$table = $schema->getTable('cal_ms_auth');
 			if (!$table->hasColumn('microsoft_calendar_id')) {
 				$table->addColumn('microsoft_calendar_id', Types::STRING, [
 					'notnull' => false,
@@ -34,7 +34,7 @@ class Version5050Date20250701000008 extends SimpleMigrationStep {
 				]);
 			}
 		} else {
-			$table = $schema->createTable('calendar_microsoft_auth');
+			$table = $schema->createTable('cal_ms_auth');
 			$table->addColumn('id', Types::BIGINT, [
 				'autoincrement' => true,
 				'notnull' => true,
@@ -87,11 +87,11 @@ class Version5050Date20250701000008 extends SimpleMigrationStep {
 			$table->addIndex(['microsoft_email'], 'cal_ms_auth_email');
 		}
 
-		if ($schema->hasTable('calendar_microsoft_map')) {
+		if ($schema->hasTable('cal_ms_map')) {
 			return $schema;
 		}
 
-		$table = $schema->createTable('calendar_microsoft_map');
+		$table = $schema->createTable('cal_ms_map');
 		$table->addColumn('id', Types::BIGINT, [
 			'autoincrement' => true,
 			'notnull' => true,
