@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Calendar\Listener;
 
+use OCA\Calendar\Db\MicrosoftAuthMapper;
 use OCA\Calendar\Service\Appointments\AppointmentConfigService;
 use OCA\Calendar\Service\Appointments\BookingService;
 use OCA\Calendar\Service\Proposal\ProposalService;
@@ -27,6 +28,7 @@ class UserDeletedListener implements IEventListener {
 		private AppointmentConfigService $appointmentConfigService,
 		private BookingService $bookingService,
 		private ProposalService $proposalService,
+		private MicrosoftAuthMapper $microsoftAuthMapper,
 	) {
 	}
 
@@ -39,6 +41,7 @@ class UserDeletedListener implements IEventListener {
 		$this->bookingService->deleteByUser($event->getUser());
 		$this->appointmentConfigService->deleteByUser($event->getUser());
 		$this->proposalService->deleteProposalsByUser($event->getUser()->getUID());
+		$this->microsoftAuthMapper->deleteByUserId($event->getUser()->getUID());
 
 		$this->logger->info('Calendar appointments cleaned up for deleted user ' . $event->getUser()->getUID());
 	}

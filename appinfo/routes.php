@@ -47,6 +47,11 @@ return [
 		['name' => 'google#connect', 'url' => '/google/connect', 'verb' => 'GET'],
 		['name' => 'google#callback', 'url' => '/google/callback', 'verb' => 'GET'],
 		['name' => 'google#disconnect', 'url' => '/google/disconnect', 'verb' => 'POST'],
+		// Microsoft
+		['name' => 'microsoft#status', 'url' => '/microsoft/status', 'verb' => 'GET'],
+		['name' => 'microsoft#connect', 'url' => '/microsoft/connect', 'verb' => 'GET'],
+		['name' => 'microsoft#callback', 'url' => '/microsoft/callback', 'verb' => 'GET'],
+		['name' => 'microsoft#disconnect', 'url' => '/microsoft/disconnect', 'verb' => 'POST'],
 		// Tools
 		['name' => 'email#sendEmailPublicLink', 'url' => '/v1/public/sendmail', 'verb' => 'POST'],
 	],

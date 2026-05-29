@@ -50,6 +50,7 @@
 	<background-jobs>
 		<job>OCA\Calendar\BackgroundJob\CleanUpOutdatedBookingsJob</job>
 		<job>OCA\Calendar\BackgroundJob\GoogleSyncJob</job>
+		<job>OCA\Calendar\BackgroundJob\MicrosoftSyncJob</job>
 	</background-jobs>
 	<navigations>
 		<navigation>
