@@ -167,6 +167,61 @@ class ProposalServiceTest extends TestCase {
 		$this->assertCount(0, $result);
 	}
 
+	public function testListProposalsByProjectIdSuccess(): void {
+		$proposalEntries = [
+			$this->createProposalEntry(1, 'Test Proposal 1'),
+			$this->createProposalEntry(2, 'Test Proposal 2'),
+		];
+
+		$this->proposalMapper->expects($this->once())
+			->method('fetchByProjectId')
+			->with('testuser', 123, 20, 0)
+			->willReturn($proposalEntries);
+
+		$this->proposalParticipantMapper->expects($this->once())
+			->method('fetchByProposalIds')
+			->with('testuser', [1, 2])
+			->willReturn([]);
+
+		$this->proposalDateMapper->expects($this->once())
+			->method('fetchByProposalIds')
+			->with('testuser', [1, 2])
+			->willReturn([]);
+
+		$this->proposalVoteMapper->expects($this->once())
+			->method('fetchByProposalIds')
+			->with('testuser', [1, 2])
+			->willReturn([]);
+
+		$result = $this->service->listProposalsByProjectId($this->user, 123, 20, 0);
+
+		$this->assertInstanceOf(ProposalCollection::class, $result);
+		$this->assertCount(2, $result);
+		$this->assertContainsOnlyInstancesOf(ProposalObject::class, $result);
+	}
+
+	public function testListProposalsByProjectIdEmpty(): void {
+		$this->proposalMapper->expects($this->once())
+			->method('fetchByProjectId')
+			->with('testuser', 123, 10, 5)
+			->willReturn([]);
+
+		$this->proposalParticipantMapper->expects($this->never())
+			->method('fetchByProposalIds');
+
+		$this->proposalDateMapper->expects($this->never())
+			->method('fetchByProposalIds');
+
+		$this->proposalVoteMapper->expects($this->never())
+			->method('fetchByProposalIds');
+
+		$result = $this->service->listProposalsByProjectId($this->user, 123, 10, 5);
+
+		$this->assertInstanceOf(ProposalCollection::class, $result);
+		$this->assertCount(0, $result);
+	}
+
+
 	public function testFetchProposalSuccess(): void {
 		$proposalEntry = $this->createProposalEntry(1, 'Test Proposal');
 

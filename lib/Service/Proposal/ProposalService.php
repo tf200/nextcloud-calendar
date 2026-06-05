@@ -946,6 +946,80 @@ class ProposalService {
 	}
 
 	/**
+	 * Retrieve proposals matching a project ID for a user, paginated and sorted.
+	 *
+	 * @param IUser $user
+	 * @param int $projectId
+	 * @param int $limit
+	 * @param int $offset
+	 * @return ProposalCollection
+	 */
+	public function listProposalsByProjectId(IUser $user, int $projectId, int $limit = 20, int $offset = 0): ProposalCollection {
+		$proposalEntries = $this->proposalMapper->fetchByProjectId($user->getUID(), $projectId, $limit, $offset);
+		if (empty($proposalEntries)) {
+			return new ProposalCollection();
+		}
+
+		$proposalIds = array_map(fn($entry) => $entry->getId(), $proposalEntries);
+
+		$proposalParticipantEntries = $this->proposalParticipantMapper->fetchByProposalIds($user->getUID(), $proposalIds);
+		$proposalDateEntries = $this->proposalDateMapper->fetchByProposalIds($user->getUID(), $proposalIds);
+		$proposalVoteEntries = $this->proposalVoteMapper->fetchByProposalIds($user->getUID(), $proposalIds);
+
+		// Group items by proposal ID (pid)
+		$proposalParticipantEntries = array_reduce(
+			$proposalParticipantEntries,
+			function ($carry, $entry) {
+				$pid = $entry->getPid();
+				$carry[$pid][] = $entry;
+				return $carry;
+			},
+			[]
+		);
+		$proposalDateEntries = array_reduce(
+			$proposalDateEntries,
+			function ($carry, $entry) {
+				$pid = $entry->getPid();
+				$carry[$pid][] = $entry;
+				return $carry;
+			},
+			[]
+		);
+		$proposalVoteEntries = array_reduce(
+			$proposalVoteEntries,
+			function ($carry, $entry) {
+				$pid = $entry->getPid();
+				$carry[$pid][] = $entry;
+				return $carry;
+			},
+			[]
+		);
+
+		// Build ProposalCollection, keeping the database sort order (id DESC)
+		$proposals = new ProposalCollection();
+		foreach ($proposalEntries as $proposalEntry) {
+			$proposal = new ProposalObject();
+			$proposal->fromStore($proposalEntry);
+
+			$pid = $proposalEntry->getId();
+
+			if (isset($proposalParticipantEntries[$pid])) {
+				$proposal->getParticipants()->fromStore($proposalParticipantEntries[$pid]);
+			}
+			if (isset($proposalDateEntries[$pid])) {
+				$proposal->getDates()->fromStore($proposalDateEntries[$pid]);
+			}
+			if (isset($proposalVoteEntries[$pid])) {
+				$proposal->getVotes()->fromStore($proposalVoteEntries[$pid]);
+			}
+
+			$proposals[] = $proposal;
+		}
+
+		return $proposals;
+	}
+
+	/**
 	 * Find existing calendar blocker event
 	 *
 	 * @return array{calendarUri: string, eventUri: string}|null

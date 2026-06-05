@@ -46,6 +46,30 @@ class ProposalMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	/**
+	 * Fetch proposals by project ID, sorted by most recent, with pagination.
+	 *
+	 * @param string $userId
+	 * @param int $projectId
+	 * @param int $limit
+	 * @param int $offset
+	 * @return array<ProposalDetailsEntry>
+	 */
+	public function fetchByProjectId(string $userId, int $projectId, int $limit = 20, int $offset = 0): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where(
+				$qb->expr()->eq('uid', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR)),
+				$qb->expr()->eq('project_id', $qb->createNamedParameter($projectId, IQueryBuilder::PARAM_INT))
+			)
+			->orderBy('id', 'DESC')
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+		return $this->findEntities($qb);
+	}
+
+
 	public function deleteById(string $userId, int $id): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete($this->tableName)

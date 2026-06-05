@@ -230,4 +230,22 @@ class ProposalController extends ApiController {
 		}
 	}
 
+	/**
+	 * Retrieve list of proposals for a single project, paginated and sorted by most recent
+	 */
+	#[ApiRoute(verb: 'GET', url: '/proposal/project/{projectId}', root: '/calendar')]
+	#[NoAdminRequired]
+	#[UserRateLimit(limit: 10, period: 60)]
+	public function listByProjectId(int $projectId, int $limit = 20, int $offset = 0, ?string $user = null): JSONResponse {
+		// authorize request
+		$authorization = $this->authorize($user);
+		if ($authorization instanceof JSONResponse) {
+			return $authorization;
+		}
+		$userObject = $authorization;
+
+		$proposals = $this->proposalService->listProposalsByProjectId($userObject, $projectId, $limit, $offset);
+		return new JSONResponse($proposals->toJson('private'), Http::STATUS_OK);
+	}
+
 }

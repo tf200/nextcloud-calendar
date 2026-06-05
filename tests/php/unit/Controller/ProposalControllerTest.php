@@ -78,6 +78,46 @@ class ProposalControllerTest extends TestCase {
 		$this->assertEquals($proposalsJson, $response->getData());
 	}
 
+	public function testListByProjectIdSuccess(): void {
+		$proposalsJson = [['id' => 1, 'title' => 'Test Proposal', 'projectId' => 123]];
+		$proposalCollection = $this->createMock(ProposalCollection::class);
+		$proposalCollection->expects($this->once())
+			->method('toJson')
+			->with('private')
+			->willReturn($proposalsJson);
+
+		$this->userSession->expects($this->once())
+			->method('isLoggedIn')
+			->willReturn(true);
+		$this->userSession->expects($this->once())
+			->method('getUser')
+			->willReturn($this->user);
+		$this->proposalService->expects($this->once())
+			->method('listProposalsByProjectId')
+			->with($this->user, 123, 20, 0)
+			->willReturn($proposalCollection);
+
+		$response = $this->controller->listByProjectId(123, 20, 0);
+
+		$this->assertInstanceOf(JSONResponse::class, $response);
+		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
+		$this->assertEquals($proposalsJson, $response->getData());
+	}
+
+	public function testListByProjectIdWithNoAuthentication(): void {
+		$this->userSession->expects($this->once())
+			->method('isLoggedIn')
+			->willReturn(false);
+		$this->proposalService->expects($this->never())
+			->method('listProposalsByProjectId');
+
+		$response = $this->controller->listByProjectId(123, 20, 0);
+
+		$this->assertInstanceOf(JSONResponse::class, $response);
+		$this->assertEquals(Http::STATUS_UNAUTHORIZED, $response->getStatus());
+	}
+
+
 	public function testListWithNoAuthentication(): void {
 		$this->userSession->expects($this->once())
 			->method('isLoggedIn')

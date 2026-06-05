@@ -46,6 +46,28 @@ class ProposalVoteMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	/**
+	 * Fetch votes for a batch of proposal IDs.
+	 *
+	 * @param string $userId
+	 * @param array<int> $proposalIds
+	 * @return array<ProposalVoteEntry>
+	 */
+	public function fetchByProposalIds(string $userId, array $proposalIds): array {
+		if (empty($proposalIds)) {
+			return [];
+		}
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where(
+				$qb->expr()->eq('uid', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR)),
+				$qb->expr()->in('pid', $qb->createNamedParameter($proposalIds, IQueryBuilder::PARAM_INT_ARRAY))
+			);
+		return $this->findEntities($qb);
+	}
+
+
 	public function deleteByProposalId(string $userId, int $proposalId): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete($this->tableName)
