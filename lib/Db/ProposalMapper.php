@@ -69,6 +69,30 @@ class ProposalMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	/**
+	 * Fetch confirmed meetings by project ID from calendar objects.
+	 *
+	 * @param string $userId
+	 * @param int $projectId
+	 * @return array
+	 */
+	public function fetchConfirmedMeetingsByProjectId(string $userId, int $projectId): array {
+		$principalUri = 'principals/users/' . $userId;
+		$pattern = '%X-NC-PROJECT-ID:' . $projectId . '%';
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('c.id', 'c.calendardata', 'c.uid', 'c.uri')
+			->from('calendarobjects', 'c')
+			->innerJoin('c', 'calendars', 'cal', $qb->expr()->eq('c.calendarid', 'cal.id'))
+			->where(
+				$qb->expr()->eq('cal.principaluri', $qb->createNamedParameter($principalUri, IQueryBuilder::PARAM_STR)),
+				$qb->expr()->like('c.calendardata', $qb->createNamedParameter($pattern, IQueryBuilder::PARAM_STR)),
+				$qb->expr()->isNull('c.deleted_at')
+			)
+			->orderBy('c.id', 'DESC');
+
+		return $qb->executeQuery()->fetchAllAssociative();
+	}
 
 	public function deleteById(string $userId, int $id): void {
 		$qb = $this->db->getQueryBuilder();

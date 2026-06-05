@@ -80,11 +80,6 @@ class ProposalControllerTest extends TestCase {
 
 	public function testListByProjectIdSuccess(): void {
 		$proposalsJson = [['id' => 1, 'title' => 'Test Proposal', 'projectId' => 123]];
-		$proposalCollection = $this->createMock(ProposalCollection::class);
-		$proposalCollection->expects($this->once())
-			->method('toJson')
-			->with('private')
-			->willReturn($proposalsJson);
 
 		$this->userSession->expects($this->once())
 			->method('isLoggedIn')
@@ -95,7 +90,7 @@ class ProposalControllerTest extends TestCase {
 		$this->proposalService->expects($this->once())
 			->method('listProposalsByProjectId')
 			->with($this->user, 123, 20, 0)
-			->willReturn($proposalCollection);
+			->willReturn($proposalsJson);
 
 		$response = $this->controller->listByProjectId(123, 20, 0);
 
@@ -103,6 +98,7 @@ class ProposalControllerTest extends TestCase {
 		$this->assertEquals(Http::STATUS_OK, $response->getStatus());
 		$this->assertEquals($proposalsJson, $response->getData());
 	}
+
 
 	public function testListByProjectIdWithNoAuthentication(): void {
 		$this->userSession->expects($this->once())

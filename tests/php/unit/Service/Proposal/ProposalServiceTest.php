@@ -175,7 +175,7 @@ class ProposalServiceTest extends TestCase {
 
 		$this->proposalMapper->expects($this->once())
 			->method('fetchByProjectId')
-			->with('testuser', 123, 20, 0)
+			->with('testuser', 123, 1000, 0)
 			->willReturn($proposalEntries);
 
 		$this->proposalParticipantMapper->expects($this->once())
@@ -193,33 +193,48 @@ class ProposalServiceTest extends TestCase {
 			->with('testuser', [1, 2])
 			->willReturn([]);
 
+		// Return one confirmed meeting
+		$confirmedMeetings = [
+			[
+				'id' => 10,
+				'uid' => 'meeting-uid-123',
+				'uri' => 'meeting-123.ics',
+				'calendardata' => "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nSUMMARY:Confirmed Project Sync\r\nUID:meeting-uid-123\r\nDTSTART:20260608T100000Z\r\nDTEND:20260608T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR",
+			]
+		];
+		$this->proposalMapper->expects($this->once())
+			->method('fetchConfirmedMeetingsByProjectId')
+			->with('testuser', 123)
+			->willReturn($confirmedMeetings);
+
 		$result = $this->service->listProposalsByProjectId($this->user, 123, 20, 0);
 
-		$this->assertInstanceOf(ProposalCollection::class, $result);
-		$this->assertCount(2, $result);
-		$this->assertContainsOnlyInstancesOf(ProposalObject::class, $result);
+		$this->assertIsArray($result);
+		$this->assertCount(3, $result); // 2 proposals + 1 meeting
+
+		// Verify first is proposal, last is meeting
+		$this->assertEquals('MeetingProposal', $result[0]['@type']);
+		$this->assertEquals('Meeting', $result[2]['@type']);
+		$this->assertEquals('Confirmed Project Sync', $result[2]['title']);
 	}
 
 	public function testListProposalsByProjectIdEmpty(): void {
 		$this->proposalMapper->expects($this->once())
 			->method('fetchByProjectId')
-			->with('testuser', 123, 10, 5)
+			->with('testuser', 123, 1000, 0)
 			->willReturn([]);
 
-		$this->proposalParticipantMapper->expects($this->never())
-			->method('fetchByProposalIds');
-
-		$this->proposalDateMapper->expects($this->never())
-			->method('fetchByProposalIds');
-
-		$this->proposalVoteMapper->expects($this->never())
-			->method('fetchByProposalIds');
+		$this->proposalMapper->expects($this->once())
+			->method('fetchConfirmedMeetingsByProjectId')
+			->with('testuser', 123)
+			->willReturn([]);
 
 		$result = $this->service->listProposalsByProjectId($this->user, 123, 10, 5);
 
-		$this->assertInstanceOf(ProposalCollection::class, $result);
+		$this->assertIsArray($result);
 		$this->assertCount(0, $result);
 	}
+
 
 
 	public function testFetchProposalSuccess(): void {

@@ -245,7 +245,7 @@ class ProposalController extends ApiController {
 		$userObject = $authorization;
 
 		$proposals = $this->proposalService->listProposalsByProjectId($userObject, $projectId, $limit, $offset);
-		return new JSONResponse($proposals->toJson('private'), Http::STATUS_OK);
+		return new JSONResponse($proposals, Http::STATUS_OK);
 	}
 
 }

@@ -352,6 +352,9 @@ class ProposalService {
 		$vEvent->add('SEQUENCE', 1);
 		$vEvent->add('SUMMARY', $proposal->getTitle());
 		$vEvent->add('DESCRIPTION', $proposal->getDescription());
+		if ($proposal->getProjectId() !== null) {
+			$vEvent->add('X-NC-PROJECT-ID', $proposal->getProjectId());
+		}
 		if ($talkRoomUri !== null) {
 			$vEvent->add('LOCATION', $talkRoomUri);
 		} elseif (!empty($proposal->getLocation())) {
@@ -801,6 +804,9 @@ class ProposalService {
 		if (!empty($proposal->getDescription())) {
 			$vEvent->add('DESCRIPTION', $proposal->getDescription());
 		}
+		if ($proposal->getProjectId() !== null) {
+			$vEvent->add('X-NC-PROJECT-ID', $proposal->getProjectId());
+		}
 		if (!empty($proposal->getLocation())) {
 			$vEvent->add('LOCATION', $proposal->getLocation());
 		}
@@ -1017,6 +1023,147 @@ class ProposalService {
 		}
 
 		return $proposals;
+	}
+
+	/**
+	 * Retrieve a unified, paginated, and sorted list of meeting proposals and confirmed meetings for a project.
+	 *
+	 * @param IUser $user
+	 * @param int $projectId
+	 * @param int $limit
+	 * @param int $offset
+	 * @return array
+	 */
+	public function listProposalsByProjectId(IUser $user, int $projectId, int $limit = 20, int $offset = 0): array {
+		// 1. Fetch meeting proposals for the project
+		$proposalEntries = $this->proposalMapper->fetchByProjectId($user->getUID(), $projectId, 1000, 0);
+		$proposalJsonList = [];
+		if (!empty($proposalEntries)) {
+			$proposalIds = array_map(fn($entry) => $entry->getId(), $proposalEntries);
+
+			$proposalParticipantEntries = $this->proposalParticipantMapper->fetchByProposalIds($user->getUID(), $proposalIds);
+			$proposalDateEntries = $this->proposalDateMapper->fetchByProposalIds($user->getUID(), $proposalIds);
+			$proposalVoteEntries = $this->proposalVoteMapper->fetchByProposalIds($user->getUID(), $proposalIds);
+
+			// Group items by proposal ID (pid)
+			$proposalParticipantEntries = array_reduce(
+				$proposalParticipantEntries,
+				function ($carry, $entry) {
+					$pid = $entry->getPid();
+					$carry[$pid][] = $entry;
+					return $carry;
+				},
+				[]
+			);
+			$proposalDateEntries = array_reduce(
+				$proposalDateEntries,
+				function ($carry, $entry) {
+					$pid = $entry->getPid();
+					$carry[$pid][] = $entry;
+					return $carry;
+				},
+				[]
+			);
+			$proposalVoteEntries = array_reduce(
+				$proposalVoteEntries,
+				function ($carry, $entry) {
+					$pid = $entry->getPid();
+					$carry[$pid][] = $entry;
+					return $carry;
+				},
+				[]
+			);
+
+			foreach ($proposalEntries as $proposalEntry) {
+				$proposal = new ProposalObject();
+				$proposal->fromStore($proposalEntry);
+
+				$pid = $proposalEntry->getId();
+
+				if (isset($proposalParticipantEntries[$pid])) {
+					$proposal->getParticipants()->fromStore($proposalParticipantEntries[$pid]);
+				}
+				if (isset($proposalDateEntries[$pid])) {
+					$proposal->getDates()->fromStore($proposalDateEntries[$pid]);
+				}
+				if (isset($proposalVoteEntries[$pid])) {
+					$proposal->getVotes()->fromStore($proposalVoteEntries[$pid]);
+				}
+
+				$proposalJsonList[] = $proposal->toJson('private');
+			}
+		}
+
+		// 2. Fetch confirmed meetings for the project
+		$meetingEntries = $this->proposalMapper->fetchConfirmedMeetingsByProjectId($user->getUID(), $projectId);
+		$meetingJsonList = [];
+		foreach ($meetingEntries as $meetingEntry) {
+			try {
+				$meetingJsonList[] = $this->parseMeetingFromCalendarObject($meetingEntry, $projectId);
+			} catch (\Exception $e) {
+				// Log parser errors but don't crash the list
+				$this->logger->warning('Failed to parse confirmed meeting calendar object: ' . $e->getMessage(), ['exception' => $e]);
+			}
+		}
+
+		// 3. Merge lists: active proposals first, then confirmed meetings
+		$merged = array_merge($proposalJsonList, $meetingJsonList);
+
+		// 4. Paginate
+		return array_slice($merged, $offset, $limit);
+	}
+
+	/**
+	 * Parse a calendar object entry into a Meeting JSON array structure.
+	 */
+	private function parseMeetingFromCalendarObject(array $object, int $projectId): array {
+		$vCalendar = \Sabre\VObject\Reader::read($object['calendardata']);
+		$vEvent = $vCalendar->VEVENT;
+
+		$title = (string)($vEvent->SUMMARY ?? '');
+		$description = (string)($vEvent->DESCRIPTION ?? '');
+		$location = (string)($vEvent->LOCATION ?? '');
+		$uid = (string)($vEvent->UID ?? '');
+
+		$dtStart = $vEvent->DTSTART ? $vEvent->DTSTART->getDateTime()->format(\DateTimeInterface::ATOM) : null;
+		$dtEnd = $vEvent->DTEND ? $vEvent->DTEND->getDateTime()->format(\DateTimeInterface::ATOM) : null;
+
+		// Compute duration in minutes
+		$duration = 0;
+		if ($vEvent->DTSTART && $vEvent->DTEND) {
+			$start = $vEvent->DTSTART->getDateTime();
+			$end = $vEvent->DTEND->getDateTime();
+			$duration = (int)round(($end->getTimestamp() - $start->getTimestamp()) / 60);
+		}
+
+		$participants = [];
+		if (isset($vEvent->ATTENDEE)) {
+			foreach ($vEvent->ATTENDEE as $attendee) {
+				$email = str_replace('mailto:', '', (string)$attendee);
+				$name = (string)($attendee['CN'] ?? '');
+				$status = strtolower((string)($attendee['PARTSTAT'] ?? 'needs-action'));
+				$participants[] = [
+					'@type' => 'MeetingParticipant',
+					'name' => $name,
+					'address' => $email,
+					'status' => $status,
+				];
+			}
+		}
+
+		return [
+			'@type' => 'Meeting',
+			'id' => (int)$object['id'],
+			'uid' => $object['uid'] ?? $uid,
+			'title' => $title,
+			'description' => $description,
+			'location' => $location,
+			'duration' => $duration,
+			'projectId' => $projectId,
+			'startDate' => $dtStart,
+			'endDate' => $dtEnd,
+			'participants' => $participants,
+		];
 	}
 
 	/**
