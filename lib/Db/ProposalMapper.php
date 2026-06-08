@@ -91,7 +91,13 @@ class ProposalMapper extends QBMapper {
 			)
 			->orderBy('c.id', 'DESC');
 
-		return $qb->executeQuery()->fetchAllAssociative();
+		$result = $qb->executeQuery();
+		$rows = [];
+		while ($row = $result->fetch()) {
+			$rows[] = $row;
+		}
+
+		return $rows;
 	}
 
 	public function deleteById(string $userId, int $id): void {
